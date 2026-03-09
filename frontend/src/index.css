@@ -1,0 +1,10 @@
+/* Reset default styles */
+body {
+  margin: 0;
+  padding: 0;
+  background: #141414 !important;
+}
+
+html {
+  background: #141414 !important;
+}

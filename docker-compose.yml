@@ -1,0 +1,32 @@
+services:
+  frontend:
+    build: ./frontend
+    container_name: accounting-frontend
+    restart: unless-stopped
+    networks:
+      - proxy-network
+
+  backend:
+    build: ./backend
+    container_name: accounting-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"  # 暴露端口供 OpenClaw 访问
+    environment:
+      - NODE_ENV=production
+      - TZ=Asia/Shanghai
+      - PORT=3000
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=change-me
+      - DB_NAME=accounting
+      - APP_PASSWORD=change-me
+      - JWT_SECRET=change-me
+    networks:
+      - proxy-network
+    depends_on: []
+
+networks:
+  proxy-network:
+    external: true

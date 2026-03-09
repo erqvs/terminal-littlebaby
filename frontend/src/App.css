@@ -1,0 +1,94 @@
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: #141414 !important;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Logo */
+.logo {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 18px;
+  font-weight: bold;
+  background: rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Header */
+.header {
+  background: #141414 !important;
+  padding: 0 24px !important;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #303030;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.trigger {
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  padding: 0 12px;
+  transition: color 0.3s;
+}
+
+.trigger:hover {
+  color: #1890ff;
+}
+
+.header-title {
+  margin-left: 16px;
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* Content */
+.content {
+  margin: 24px;
+  padding: 24px;
+  background: #141414;
+  border-radius: 8px;
+  min-height: auto;
+}
+
+/* Sider */
+.ant-layout-sider {
+  background: #1f1f1f !important;
+}
+
+.ant-layout-sider-trigger {
+  background: #1f1f1f !important;
+  border-top: 1px solid #303030;
+}
+
+/* Menu */
+.ant-menu {
+  background: #1f1f1f !important;
+}
+
+/* Headings */
+h2 {
+  color: rgba(255, 255, 255, 0.85) !important;
+  font-weight: 600;
+}
+
+/* Amount colors */
+.income-amount {
+  color: #52c41a !important;
+}
+
+.expense-amount {
+  color: #ff4d4f !important;
+}
