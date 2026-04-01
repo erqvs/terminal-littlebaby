@@ -122,8 +122,11 @@ function mapCourseInfo(course) {
 // AI API Key 认证中间件
 function aiAuthMiddleware(req, res, next) {
     const apiKey = req.headers['x-api-key'] || req.query.apiKey;
-    // 从环境变量获取 AI API Key，默认值用于开发
     const validApiKey = process.env.AI_API_KEY;
+    if (!validApiKey) {
+        res.status(503).json({ error: 'AI_API_KEY 未配置' });
+        return;
+    }
     if (apiKey !== validApiKey) {
         res.status(401).json({ error: '无效的 API Key' });
         return;

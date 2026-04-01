@@ -1,0 +1,29 @@
+[
+  {
+    "name": "Algorithms",
+    "teacher": "Sample Teacher",
+    "location": "Building A-101",
+    "color": "#1890ff",
+    "day_of_week": 0,
+    "time_slot": [1, 2],
+    "weeks": [1, 2, 3, 4, 5, 6, 7, 8]
+  },
+  {
+    "name": "Database Systems",
+    "teacher": "Sample Teacher",
+    "location": "Building B-204",
+    "color": "#52c41a",
+    "day_of_week": 2,
+    "time_slot": [3, 4],
+    "weeks": [1, 2, 3, 4, 5, 6, 7, 8]
+  },
+  {
+    "name": "Operating Systems Lab",
+    "teacher": "Sample Teacher",
+    "location": "Lab C-303",
+    "color": "#faad14",
+    "day_of_week": 4,
+    "time_slot": [5, 6, 7, 8],
+    "weeks": [2, 4, 6, 8, 10, 12]
+  }
+]
