@@ -4,8 +4,12 @@ import dotenv from 'dotenv';
 import transactionsRouter from './routes/transactions';
 import categoriesRouter from './routes/categories';
 import accountsRouter from './routes/accounts';
+import budgetsRouter from './routes/budgets';
 import goalsRouter from './routes/goals';
+import openclawCronRouter from './routes/openclawCron';
+import digestHistoryRouter from './routes/digestHistory';
 import scheduleRouter from './routes/schedule';
+import semesterRouter from './routes/semester';
 import authRouter, { authMiddleware } from './routes/auth';
 import aiRouter from './routes/ai';
 
@@ -16,8 +20,8 @@ const PORT = process.env.PORT || 3000;
 
 // 允许的域名列表
 const allowedOrigins = [
-  'https://accounting.example.com:23333',
-  'https://accounting.example.com',
+  'https://terminal-claw.example.com:23333',
+  'https://terminal-claw.example.com',
   'http://localhost:5173',  // 本地开发
   'http://localhost:3000',
 ];
@@ -34,8 +38,8 @@ app.use(cors({
     }
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
 }));
 
 // 安全响应头
@@ -77,8 +81,12 @@ app.use('/api/ai', aiRouter);
 app.use('/api/transactions', authMiddleware, transactionsRouter);
 app.use('/api/categories', authMiddleware, categoriesRouter);
 app.use('/api/accounts', authMiddleware, accountsRouter);
+app.use('/api/budgets', authMiddleware, budgetsRouter);
 app.use('/api/goals', authMiddleware, goalsRouter);
+app.use('/api/openclaw-cron', authMiddleware, openclawCronRouter);
+app.use('/api/digest-history', authMiddleware, digestHistoryRouter);
 app.use('/api/schedule', authMiddleware, scheduleRouter);
+app.use('/api/semester', authMiddleware, semesterRouter);
 
 // 全局错误处理
 app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {

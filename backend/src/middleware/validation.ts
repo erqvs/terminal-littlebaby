@@ -81,8 +81,13 @@ export function validateTransaction(req: Request, res: Response, next: NextFunct
 export function validateAccount(req: Request, res: Response, next: NextFunction): void {
   const { name, type, balance, limit_amount, repayment_day } = req.body;
   const errors: string[] = [];
+  const isPartialUpdate = req.method === 'PUT' || req.method === 'PATCH';
 
-  if (!name || !isValidString(name, 100)) {
+  if (!isPartialUpdate && (!name || !isValidString(name, 100))) {
+    errors.push('账户名称不能为空且不能超过 100 个字符');
+  }
+
+  if (isPartialUpdate && name !== undefined && !isValidString(name, 100)) {
     errors.push('账户名称不能为空且不能超过 100 个字符');
   }
 
@@ -96,12 +101,12 @@ export function validateAccount(req: Request, res: Response, next: NextFunction)
   }
 
   // 负债账户的额度验证
-  if (type === 'debt' && limit_amount !== undefined && !isValidNumber(limit_amount, 0, 999999999)) {
+  if (limit_amount !== undefined && !isValidNumber(limit_amount, 0, 999999999)) {
     errors.push('额度必须是有效的非负数');
   }
 
   // 还款日验证
-  if (type === 'debt' && repayment_day !== undefined && !isValidNumber(repayment_day, 1, 28)) {
+  if (repayment_day !== undefined && !isValidNumber(repayment_day, 1, 28)) {
     errors.push('还款日必须是 1-28 之间的数字');
   }
 
@@ -144,23 +149,89 @@ export function validateDebt(req: Request, res: Response, next: NextFunction): v
 
 // 验证目标数据
 export function validateGoal(req: Request, res: Response, next: NextFunction): void {
-  const { name, target_amount, current_amount, deadline } = req.body;
+  const { name, target_amount, deadline, sort_order } = req.body;
   const errors: string[] = [];
+  const isPartialUpdate = req.method === 'PUT' || req.method === 'PATCH';
 
-  if (!name || !isValidString(name, 100)) {
+  if (!isPartialUpdate && (!name || !isValidString(name, 100))) {
     errors.push('目标名称不能为空且不能超过 100 个字符');
   }
 
-  if (!isValidNumber(target_amount, 0.01, 999999999)) {
+  if (isPartialUpdate && name !== undefined && !isValidString(name, 100)) {
+    errors.push('目标名称不能为空且不能超过 100 个字符');
+  }
+
+  if (!isPartialUpdate && !isValidNumber(target_amount, 0.01, 999999999)) {
     errors.push('目标金额必须是有效的正数');
   }
 
-  if (current_amount !== undefined && !isValidNumber(current_amount, 0, 999999999)) {
-    errors.push('当前金额必须是有效的非负数');
+  if (isPartialUpdate && target_amount !== undefined && !isValidNumber(target_amount, 0.01, 999999999)) {
+    errors.push('目标金额必须是有效的正数');
   }
 
-  if (deadline !== undefined && !isValidDate(deadline)) {
+  if (deadline !== undefined && deadline !== null && !isValidDate(deadline)) {
     errors.push('截止日期格式无效');
+  }
+
+  if (sort_order !== undefined && !isValidNumber(sort_order, 0, 999999)) {
+    errors.push('排序值必须是有效的非负数');
+  }
+
+  if (errors.length > 0) {
+    res.status(400).json({ error: errors.join('; ') });
+    return;
+  }
+
+  next();
+}
+
+export function validateBudget(req: Request, res: Response, next: NextFunction): void {
+  const { category_id, year, month, budget_amount, alert_threshold, note, sort_order } = req.body;
+  const errors: string[] = [];
+  const isPartialUpdate = req.method === 'PUT' || req.method === 'PATCH';
+
+  if (!isPartialUpdate && !isValidNumber(category_id, 1)) {
+    errors.push('分类 ID 必须是有效的正整数');
+  }
+
+  if (isPartialUpdate && category_id !== undefined && !isValidNumber(category_id, 1)) {
+    errors.push('分类 ID 必须是有效的正整数');
+  }
+
+  if (!isPartialUpdate && !isValidNumber(year, 2000, 2100)) {
+    errors.push('年份必须在 2000-2100 之间');
+  }
+
+  if (isPartialUpdate && year !== undefined && !isValidNumber(year, 2000, 2100)) {
+    errors.push('年份必须在 2000-2100 之间');
+  }
+
+  if (!isPartialUpdate && !isValidNumber(month, 1, 12)) {
+    errors.push('月份必须在 1-12 之间');
+  }
+
+  if (isPartialUpdate && month !== undefined && !isValidNumber(month, 1, 12)) {
+    errors.push('月份必须在 1-12 之间');
+  }
+
+  if (!isPartialUpdate && !isValidNumber(budget_amount, 0.01, 999999999)) {
+    errors.push('预算金额必须是有效的正数');
+  }
+
+  if (isPartialUpdate && budget_amount !== undefined && !isValidNumber(budget_amount, 0.01, 999999999)) {
+    errors.push('预算金额必须是有效的正数');
+  }
+
+  if (alert_threshold !== undefined && !isValidNumber(alert_threshold, 0, 100)) {
+    errors.push('预警阈值必须在 0-100 之间');
+  }
+
+  if (note !== undefined && note !== null && !isValidString(note, 255)) {
+    errors.push('备注不能超过 255 个字符');
+  }
+
+  if (sort_order !== undefined && !isValidNumber(sort_order, 0, 999999)) {
+    errors.push('排序值必须是有效的非负数');
   }
 
   if (errors.length > 0) {

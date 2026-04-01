@@ -4,6 +4,7 @@ import { PlusIcon, TrashIcon } from '../components/Icons';
 import dayjs from 'dayjs';
 import type { Transaction, Category, Account } from '../types';
 import { getTransactions, createTransaction, deleteTransaction, getCategories, createCategory, getAccounts } from '../services/api';
+import { getDebtAvailableAmount, getDebtUsedAmount } from '../utils/debts';
 
 type TabType = 'income' | 'expense';
 
@@ -272,6 +273,12 @@ export default function Management() {
                         marginRight: 6
                       }} />
                       {a.name}
+                      <span style={{ color: '#1890ff', marginLeft: 8 }}>
+                        可用 ¥{getDebtAvailableAmount(a).toFixed(0)}
+                      </span>
+                      <span style={{ color: '#999', marginLeft: 8 }}>
+                        已用 ¥{getDebtUsedAmount(a).toFixed(0)}
+                      </span>
                     </Select.Option>
                   ))}
                 </Select.OptGroup>

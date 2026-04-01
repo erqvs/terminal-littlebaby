@@ -5,6 +5,7 @@ import { ArrowDownIcon, WalletIcon, TargetIcon } from '../components/Icons';
 import TrendChart from '../components/TrendChart';
 import type { Transaction, Account, Goal } from '../types';
 import { getTransactions, getAccounts, getGoals } from '../services/api';
+import { getDebtAvailableAmount, getDebtUsagePercent, getDebtUsedAmount } from '../utils/debts';
 
 export default function Dashboard() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -39,14 +40,14 @@ export default function Dashboard() {
   const debtAccounts = accounts.filter(a => a.type === 'debt');
 
   const totalAssets = assetAccounts.reduce((sum, a) => sum + Number(a.balance), 0);
-  const totalDebts = debtAccounts.reduce((sum, d) => sum + Number(d.balance), 0);
+  const totalDebts = debtAccounts.reduce((sum, d) => sum + getDebtUsedAmount(d), 0);
   const netWorth = totalAssets - totalDebts;
 
   // 获取第一个未完成的目标，计算还差多少
   const activeGoals = goals.filter(g => !g.is_completed);
   const nextGoal = activeGoals[0];
   const goalRemaining = nextGoal
-    ? Number(nextGoal.target_amount) - Number(nextGoal.current_amount)
+    ? Math.max(Number(nextGoal.target_amount) - Number(nextGoal.current_amount), 0)
     : 0;
 
   const recentTransactions = transactions.slice(0, 5);
@@ -214,7 +215,9 @@ export default function Dashboard() {
               <List
                 dataSource={debtAccounts}
                 renderItem={item => {
-                  const usage = item.limit_amount > 0 ? (item.balance / item.limit_amount * 100) : 0;
+                  const usage = getDebtUsagePercent(item);
+                  const availableAmount = getDebtAvailableAmount(item);
+                  const usedAmount = getDebtUsedAmount(item);
                   return (
                     <List.Item>
                       <div style={{ width: '100%' }}>
@@ -229,15 +232,20 @@ export default function Dashboard() {
                             </div>
                             <span>{item.name}</span>
                           </div>
-                          <span style={{ color: '#ff4d4f', fontWeight: 'bold' }}>¥{Number(item.balance).toFixed(2)}</span>
+                          <span style={{ color: '#1890ff', fontWeight: 'bold' }}>可用 ¥{availableAmount.toFixed(2)}</span>
                         </div>
                         {item.limit_amount > 0 && (
-                          <Progress
-                            percent={Math.min(usage, 100)}
-                            size="small"
-                            showInfo={false}
-                            strokeColor={usage > 80 ? '#ff4d4f' : usage > 50 ? '#faad14' : '#52c41a'}
-                          />
+                          <>
+                            <Progress
+                              percent={Math.min(usage, 100)}
+                              size="small"
+                              showInfo={false}
+                              strokeColor={usage > 80 ? '#ff4d4f' : usage > 50 ? '#faad14' : '#52c41a'}
+                            />
+                            <div style={{ color: '#666', fontSize: 12 }}>
+                              已用 ¥{usedAmount.toFixed(2)} / 总额度 ¥{Number(item.limit_amount).toFixed(2)}
+                            </div>
+                          </>
                         )}
                       </div>
                     </List.Item>

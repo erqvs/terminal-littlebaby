@@ -43,6 +43,25 @@ export const TargetIcon = ({ style, className, onClick }: IconProps) => (
   </svg>
 );
 
+export const BudgetIcon = ({ style, className, onClick }: IconProps) => (
+  <svg style={{ width: 16, height: 16, ...style }} className={className} onClick={onClick} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 1v22" />
+    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+    <path d="M3 3h6" />
+  </svg>
+);
+
+export const CategoryIcon = ({ style, className, onClick }: IconProps) => (
+  <svg style={{ width: 16, height: 16, ...style }} className={className} onClick={onClick} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="4" width="8" height="7" rx="2" />
+    <rect x="13" y="4" width="8" height="7" rx="2" />
+    <rect x="8" y="13" width="8" height="7" rx="2" />
+    <path d="M7 11v2" />
+    <path d="M17 11v2" />
+    <path d="M11 16h2" />
+  </svg>
+);
+
 export const MenuFoldIcon = ({ style, className, onClick }: IconProps) => (
   <svg style={{ width: 18, height: 18, ...style }} className={className} onClick={onClick} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="21" y1="6" x2="3" y2="6" />
@@ -110,5 +129,27 @@ export const ScheduleIcon = ({ style, className }: IconProps) => (
     <line x1="8" y1="14" x2="8" y2="14.01" />
     <line x1="12" y1="14" x2="12" y2="14.01" />
     <line x1="16" y1="14" x2="16" y2="14.01" />
+  </svg>
+);
+
+export const TaskIcon = ({ style, className }: IconProps) => (
+  <svg style={{ width: 16, height: 16, ...style }} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 11l3 3L22 4" />
+    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+  </svg>
+);
+
+export const ClockIcon = ({ style, className }: IconProps) => (
+  <svg style={{ width: 16, height: 16, ...style }} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" />
+    <polyline points="12 6 12 12 16 14" />
+  </svg>
+);
+
+export const LogoutIcon = ({ style, className, onClick }: IconProps) => (
+  <svg style={{ width: 16, height: 16, ...style }} className={className} onClick={onClick} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+    <polyline points="16 17 21 12 16 7" />
+    <line x1="21" y1="12" x2="9" y2="12" />
   </svg>
 );

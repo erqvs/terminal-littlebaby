@@ -29,12 +29,17 @@ router.post('/', validateTransaction, async (req: Request, res: Response) => {
     await connection.beginTransaction();
 
     // 获取分类类型
-    const [categoryRows] = await connection.execute('SELECT type FROM categories WHERE id = ?', [category_id]);
+    const [categoryRows] = await connection.execute('SELECT type, kind FROM categories WHERE id = ?', [category_id]);
     const category = (categoryRows as any[])[0];
 
     if (!category) {
       await connection.rollback();
       return res.status(400).json({ error: '分类不存在' });
+    }
+
+    if (category.kind !== 'leaf') {
+      await connection.rollback();
+      return res.status(400).json({ error: '交易记录只能使用普通分类' });
     }
 
     // 插入交易记录

@@ -42,7 +42,12 @@ const dotenv_1 = __importDefault(require("dotenv"));
 const transactions_1 = __importDefault(require("./routes/transactions"));
 const categories_1 = __importDefault(require("./routes/categories"));
 const accounts_1 = __importDefault(require("./routes/accounts"));
+const budgets_1 = __importDefault(require("./routes/budgets"));
 const goals_1 = __importDefault(require("./routes/goals"));
+const openclawCron_1 = __importDefault(require("./routes/openclawCron"));
+const digestHistory_1 = __importDefault(require("./routes/digestHistory"));
+const schedule_1 = __importDefault(require("./routes/schedule"));
+const semester_1 = __importDefault(require("./routes/semester"));
 const auth_1 = __importStar(require("./routes/auth"));
 const ai_1 = __importDefault(require("./routes/ai"));
 dotenv_1.default.config();
@@ -50,8 +55,8 @@ const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3000;
 // 允许的域名列表
 const allowedOrigins = [
-    'https://accounting.example.com:23333',
-    'https://accounting.example.com',
+    'https://terminal-claw.example.com:23333',
+    'https://terminal-claw.example.com',
     'http://localhost:5173', // 本地开发
     'http://localhost:3000',
 ];
@@ -69,8 +74,8 @@ app.use((0, cors_1.default)({
         }
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
 }));
 // 安全响应头
 app.use((req, res, next) => {
@@ -103,7 +108,12 @@ app.use('/api/ai', ai_1.default);
 app.use('/api/transactions', auth_1.authMiddleware, transactions_1.default);
 app.use('/api/categories', auth_1.authMiddleware, categories_1.default);
 app.use('/api/accounts', auth_1.authMiddleware, accounts_1.default);
+app.use('/api/budgets', auth_1.authMiddleware, budgets_1.default);
 app.use('/api/goals', auth_1.authMiddleware, goals_1.default);
+app.use('/api/openclaw-cron', auth_1.authMiddleware, openclawCron_1.default);
+app.use('/api/digest-history', auth_1.authMiddleware, digestHistory_1.default);
+app.use('/api/schedule', auth_1.authMiddleware, schedule_1.default);
+app.use('/api/semester', auth_1.authMiddleware, semester_1.default);
 // 全局错误处理
 app.use((err, req, res, _next) => {
     console.error('Error:', err.message);

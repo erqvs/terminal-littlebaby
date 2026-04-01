@@ -92,7 +92,7 @@ export default function Login() {
               margin: 0,
             }}
           >
-            记账本
+            terminal-claw
           </h1>
           <p
             style={{

@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Card, Button, Modal, Form, Input, InputNumber, ColorPicker, Space, message, Popconfirm, Row, Col, Progress, DatePicker, Tag } from 'antd';
-import { PlusIcon } from '../components/Icons';
+import { ArrowDownIcon, ArrowUpIcon, PlusIcon } from '../components/Icons';
 import dayjs from 'dayjs';
 import type { Goal } from '../types';
-import { getGoals, createGoal, updateGoal, deleteGoal } from '../services/api';
+import { getGoals, createGoal, updateGoal, deleteGoal, reorderGoals } from '../services/api';
 
 const PRESET_COLORS = [
   '#52c41a', '#1890ff', '#722ed1', '#eb2f96', '#fa8c16',
@@ -37,19 +37,25 @@ export default function Goals() {
     try {
       const color = values.color?.toHexString?.() || values.color || '#52c41a';
       const deadline = values.deadline?.format?.('YYYY-MM-DD') || null;
+      const payload = {
+        ...values,
+        color,
+        ...(deadline ? { deadline } : {}),
+      };
+
       if (editingGoal) {
-        await updateGoal(editingGoal.id, { ...values, color, deadline });
+        await updateGoal(editingGoal.id, payload);
         message.success('更新成功');
       } else {
-        await createGoal({ ...values, color, deadline });
+        await createGoal(payload);
         message.success('添加成功');
       }
       setModalVisible(false);
       form.resetFields();
       setEditingGoal(null);
       fetchGoals();
-    } catch (error) {
-      message.error('操作失败');
+    } catch (error: any) {
+      message.error(error.message || '操作失败');
     }
   };
 
@@ -72,14 +78,26 @@ export default function Goals() {
     }
   };
 
-  const handleUpdateProgress = async (goal: Goal, delta: number) => {
-    const newAmount = Math.max(0, Number(goal.current_amount) + delta);
-    const isCompleted = newAmount >= Number(goal.target_amount);
+  const orderedGoals = [...goals].sort((left, right) => left.sort_order - right.sort_order || left.id - right.id);
+  const goalPositionMap = new Map(orderedGoals.map((goal, index) => [goal.id, index]));
+
+  const handleMoveGoal = async (goalId: number, direction: -1 | 1) => {
+    const currentIndex = orderedGoals.findIndex((goal) => goal.id === goalId);
+    const nextIndex = currentIndex + direction;
+
+    if (currentIndex === -1 || nextIndex < 0 || nextIndex >= orderedGoals.length) {
+      return;
+    }
+
+    const nextOrder = [...orderedGoals];
+    [nextOrder[currentIndex], nextOrder[nextIndex]] = [nextOrder[nextIndex], nextOrder[currentIndex]];
+
     try {
-      await updateGoal(goal.id, { current_amount: newAmount, is_completed: isCompleted });
-      fetchGoals();
-    } catch (error) {
-      message.error('更新失败');
+      const updatedGoals = await reorderGoals(nextOrder.map((goal) => goal.id));
+      setGoals(updatedGoals);
+      message.success('排序已更新');
+    } catch (error: any) {
+      message.error(error.message || '更新排序失败');
     }
   };
 
@@ -102,9 +120,13 @@ export default function Goals() {
       <h3 style={{ marginBottom: 16, color: 'rgba(255,255,255,0.65)' }}>进行中 ({activeGoals.length})</h3>
       <Row gutter={[16, 16]} style={{ marginBottom: 32 }}>
         {activeGoals.map(goal => {
-          const percent = Math.min((Number(goal.current_amount) / Number(goal.target_amount)) * 100, 100);
-          const remaining = Number(goal.target_amount) - Number(goal.current_amount);
+          const currentAmount = Number(goal.current_amount);
+          const percent = Math.min(Math.max(Number(goal.progress) || 0, 0), 100);
+          const remaining = Number(goal.remaining_amount ?? Math.max(Number(goal.target_amount) - currentAmount, 0));
           const daysLeft = goal.deadline ? Math.ceil((new Date(goal.deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
+          const goalPosition = goalPositionMap.get(goal.id) ?? 0;
+          const canMoveUp = goalPosition > 0;
+          const canMoveDown = goalPosition < orderedGoals.length - 1;
           
           return (
             <Col xs={24} sm={12} md={8} key={goal.id}>
@@ -120,6 +142,9 @@ export default function Goals() {
                     </div>
                     <div>
                       <div style={{ fontWeight: 500 }}>{goal.name}</div>
+                      <Tag color="blue" style={{ marginInlineEnd: 8 }}>
+                        第 {goalPosition + 1} 顺位
+                      </Tag>
                       {daysLeft !== null && (
                         <Tag color={daysLeft < 30 ? 'red' : daysLeft < 90 ? 'orange' : 'green'}>
                           剩余 {daysLeft} 天
@@ -128,6 +153,24 @@ export default function Goals() {
                     </div>
                   </div>
                   <Space>
+                    <span
+                      onClick={canMoveUp ? () => handleMoveGoal(goal.id, -1) : undefined}
+                      style={{ cursor: canMoveUp ? 'pointer' : 'not-allowed', fontSize: 12, color: '#1890ff', opacity: canMoveUp ? 1 : 0.35 }}
+                    >
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <ArrowUpIcon style={{ width: 12, height: 12 }} />
+                        上移
+                      </span>
+                    </span>
+                    <span
+                      onClick={canMoveDown ? () => handleMoveGoal(goal.id, 1) : undefined}
+                      style={{ cursor: canMoveDown ? 'pointer' : 'not-allowed', fontSize: 12, color: '#1890ff', opacity: canMoveDown ? 1 : 0.35 }}
+                    >
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <ArrowDownIcon style={{ width: 12, height: 12 }} />
+                        下移
+                      </span>
+                    </span>
                     <span onClick={() => handleEdit(goal)} style={{ cursor: 'pointer', fontSize: 12, color: '#1890ff' }}>编辑</span>
                     <Popconfirm title="确定删除？" onConfirm={() => handleDelete(goal.id)} okText="确定" cancelText="取消">
                       <span style={{ color: '#ff4d4f', cursor: 'pointer', fontSize: 12 }}>删除</span>
@@ -137,26 +180,23 @@ export default function Goals() {
                 
                 <Progress 
                   percent={percent} 
+                  format={(value) => `${Math.round(value ?? 0)}%`}
                   strokeColor={goal.color}
                   strokeWidth={12}
                   style={{ marginBottom: 8 }}
                 />
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-                  <span style={{ color: '#52c41a', fontWeight: 'bold' }}>¥{Number(goal.current_amount).toLocaleString()}</span>
-                  <span style={{ color: '#666' }}>/ ¥{Number(goal.target_amount).toLocaleString()}</span>
+                  <span style={{ color: '#52c41a', fontWeight: 'bold' }}>
+                    已完成 ¥{currentAmount.toLocaleString()}
+                  </span>
+                  <span style={{ color: '#666' }}>目标 ¥{Number(goal.target_amount).toLocaleString()}</span>
                 </div>
                 
                 <div style={{ color: '#666', fontSize: 13, marginBottom: 12 }}>
                   还差 ¥{remaining.toLocaleString()}
                 </div>
-                
-                <Space>
-                  <Button size="small" onClick={() => handleUpdateProgress(goal, -1000)}>-1000</Button>
-                  <Button size="small" onClick={() => handleUpdateProgress(goal, -100)}>-100</Button>
-                  <Button size="small" type="primary" onClick={() => handleUpdateProgress(goal, 100)}>+100</Button>
-                  <Button size="small" type="primary" onClick={() => handleUpdateProgress(goal, 1000)}>+1000</Button>
-                </Space>
+
               </Card>
             </Col>
           );
@@ -168,7 +208,12 @@ export default function Goals() {
         <>
           <h3 style={{ marginBottom: 16, color: 'rgba(255,255,255,0.65)' }}>已完成 ({completedGoals.length})</h3>
           <Row gutter={[16, 16]}>
-            {completedGoals.map(goal => (
+            {completedGoals.map(goal => {
+              const goalPosition = goalPositionMap.get(goal.id) ?? 0;
+              const canMoveUp = goalPosition > 0;
+              const canMoveDown = goalPosition < orderedGoals.length - 1;
+
+              return (
               <Col xs={24} sm={12} md={8} key={goal.id}>
                 <Card hoverable style={{ opacity: 0.8 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -182,16 +227,39 @@ export default function Goals() {
                       </div>
                       <div>
                         <div style={{ fontWeight: 500, textDecoration: 'line-through' }}>{goal.name}</div>
+                        <Tag color="blue" style={{ marginInlineEnd: 8 }}>
+                          第 {goalPosition + 1} 顺位
+                        </Tag>
                         <div style={{ color: '#52c41a' }}>¥{Number(goal.target_amount).toLocaleString()}</div>
                       </div>
                     </div>
-                    <Popconfirm title="确定删除？" onConfirm={() => handleDelete(goal.id)} okText="确定" cancelText="取消">
-                      <span style={{ color: '#ff4d4f', cursor: 'pointer', fontSize: 12 }}>删除</span>
-                    </Popconfirm>
+                    <Space>
+                      <span
+                        onClick={canMoveUp ? () => handleMoveGoal(goal.id, -1) : undefined}
+                        style={{ cursor: canMoveUp ? 'pointer' : 'not-allowed', fontSize: 12, color: '#1890ff', opacity: canMoveUp ? 1 : 0.35 }}
+                      >
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <ArrowUpIcon style={{ width: 12, height: 12 }} />
+                          上移
+                        </span>
+                      </span>
+                      <span
+                        onClick={canMoveDown ? () => handleMoveGoal(goal.id, 1) : undefined}
+                        style={{ cursor: canMoveDown ? 'pointer' : 'not-allowed', fontSize: 12, color: '#1890ff', opacity: canMoveDown ? 1 : 0.35 }}
+                      >
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <ArrowDownIcon style={{ width: 12, height: 12 }} />
+                          下移
+                        </span>
+                      </span>
+                      <Popconfirm title="确定删除？" onConfirm={() => handleDelete(goal.id)} okText="确定" cancelText="取消">
+                        <span style={{ color: '#ff4d4f', cursor: 'pointer', fontSize: 12 }}>删除</span>
+                      </Popconfirm>
+                    </Space>
                   </div>
                 </Card>
               </Col>
-            ))}
+            )})}
           </Row>
         </>
       )}
@@ -212,18 +280,20 @@ export default function Goals() {
           <Form.Item name="name" label="目标名称" rules={[{ required: true, message: '请输入名称' }]}>
             <Input placeholder="如：存款20万、买车基金" />
           </Form.Item>
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item name="target_amount" label="目标金额" rules={[{ required: true, message: '请输入目标金额' }]}>
-                <InputNumber prefix="¥" precision={0} min={0} style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="current_amount" label="当前金额" initialValue={0}>
-                <InputNumber prefix="¥" precision={0} min={0} style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-          </Row>
+          <Form.Item name="target_amount" label="目标金额" rules={[{ required: true, message: '请输入目标金额' }]}>
+            <InputNumber prefix="¥" precision={0} min={0} style={{ width: '100%' }} />
+          </Form.Item>
+          <div style={{
+            marginTop: -8,
+            marginBottom: 16,
+            padding: 12,
+            borderRadius: 8,
+            background: 'rgba(24,144,255,0.08)',
+            color: 'rgba(255,255,255,0.65)',
+            fontSize: 13,
+          }}>
+            当前完成金额会按净资产和目标顺位自动计算，这里不再手动填写。
+          </div>
           <Form.Item name="deadline" label="截止日期">
             <DatePicker style={{ width: '100%' }} placeholder="可选" />
           </Form.Item>

@@ -19,9 +19,13 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0 12px;
   color: #fff;
   font-size: 18px;
   font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   background: rgba(255, 255, 255, 0.08);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -71,6 +75,48 @@ body {
 .ant-layout-sider-trigger {
   background: #1f1f1f !important;
   border-top: 1px solid #303030;
+}
+
+.sider-menu {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.sider-footer {
+  padding: 12px;
+  border-top: 1px solid #303030;
+}
+
+.sider-logout-button {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  color: rgba(255, 255, 255, 0.65) !important;
+}
+
+.sider-logout-button:hover {
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.ant-layout-sider-collapsed .logo {
+  padding: 0;
+  font-size: 16px;
+}
+
+.ant-layout-sider-collapsed .sider-footer {
+  display: flex;
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.ant-layout-sider-collapsed .sider-logout-button {
+  width: 40px;
+  min-width: 40px;
+  justify-content: center;
+  padding-inline: 0 !important;
 }
 
 /* Menu */

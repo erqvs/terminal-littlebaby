@@ -3,6 +3,7 @@ import { FloatButton, Modal, Form, InputNumber, Select, Input, Radio, message, D
 import dayjs from 'dayjs';
 import type { Account, Category } from '../types';
 import { getAccounts, getCategories, createTransaction } from '../services/api';
+import { getDebtAvailableAmount, getDebtUsedAmount } from '../utils/debts';
 
 export default function QuickAddButton() {
   const [modalVisible, setModalVisible] = useState(false);
@@ -161,8 +162,11 @@ export default function QuickAddButton() {
                         marginRight: 8
                       }} />
                       {a.name}
-                      <span style={{ color: '#ff4d4f', marginLeft: 8 }}>
-                        已用 ¥{Number(a.balance).toFixed(2)}
+                      <span style={{ color: '#1890ff', marginLeft: 8 }}>
+                        可用 ¥{getDebtAvailableAmount(a).toFixed(2)}
+                      </span>
+                      <span style={{ color: '#999', marginLeft: 8 }}>
+                        已用 ¥{getDebtUsedAmount(a).toFixed(2)}
                       </span>
                     </Select.Option>
                   ))}
@@ -189,7 +193,7 @@ export default function QuickAddButton() {
           <div style={{ color: '#666', fontSize: 12, marginBottom: 12 }}>
             <div>💡 提示：</div>
             <div>• 从<span style={{ color: '#1890ff' }}>资产账户</span>支出 → 余额减少</div>
-            <div>• 从<span style={{ color: '#ff4d4f' }}>负债账户</span>（如花呗）支出 → 已用额度增加</div>
+            <div>• 从<span style={{ color: '#ff4d4f' }}>负债账户</span>（如花呗）支出 → 可用额度减少</div>
           </div>
 
           <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>

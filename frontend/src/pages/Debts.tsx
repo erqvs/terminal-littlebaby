@@ -3,6 +3,14 @@ import { Card, Button, Modal, Form, Input, InputNumber, ColorPicker, Space, mess
 import { PlusIcon } from '../components/Icons';
 import type { Account } from '../types';
 import { getAccounts, createAccount, updateAccount, deleteAccount } from '../services/api';
+import {
+  getDebtAvailableAmount,
+  getDebtLimitAmount,
+  getDebtOverLimitAmount,
+  getDebtUsagePercent,
+  getDebtUsedAmount,
+  getDebtUsedAmountFromAvailable,
+} from '../utils/debts';
 
 const PRESET_COLORS = [
   '#ff4d4f', '#fa8c16', '#eb2f96', '#722ed1', '#1890ff',
@@ -35,12 +43,27 @@ export default function Debts() {
   const handleSubmit = async (values: any) => {
     try {
       const color = values.color?.toHexString?.() || values.color || '#ff4d4f';
+      const limitAmount = Number(values.limit_amount || 0);
+      const availableAmount = Number(values.available_amount || 0);
+
+      if (limitAmount <= 0 && availableAmount > 0) {
+        message.error('要填写可用金额，必须先设置总额度');
+        return;
+      }
+
+      if (availableAmount > limitAmount) {
+        message.error('可用金额不能大于总额度');
+        return;
+      }
+
+      const usedAmount = getDebtUsedAmountFromAvailable(limitAmount, availableAmount);
+
       if (editingDebt) {
         await updateAccount(editingDebt.id, {
           name: values.name,
           color,
-          balance: values.amount,  // amount 映射到 balance
-          limit_amount: values.limit_amount,
+          balance: usedAmount,
+          limit_amount: limitAmount,
           repayment_day: values.repayment_day,
           type: 'debt',
         });
@@ -50,8 +73,8 @@ export default function Debts() {
           name: values.name,
           type: 'debt',
           color,
-          balance: values.amount || 0,
-          limit_amount: values.limit_amount || 0,
+          balance: usedAmount,
+          limit_amount: limitAmount,
           repayment_day: values.repayment_day || 1,
         });
         message.success('添加成功');
@@ -60,17 +83,16 @@ export default function Debts() {
       form.resetFields();
       setEditingDebt(null);
       fetchDebts();
-    } catch (error) {
-      message.error('操作失败');
+    } catch (error: any) {
+      message.error(error.message || '操作失败');
     }
   };
 
   const handleEdit = (debt: Account) => {
     setEditingDebt(debt);
-    // 将 balance 映射回 amount 字段用于表单显示
     form.setFieldsValue({
       ...debt,
-      amount: debt.balance,  // balance 是已用额度
+      available_amount: getDebtAvailableAmount(debt),
     });
     setModalVisible(true);
   };
@@ -85,18 +107,27 @@ export default function Debts() {
     }
   };
 
-  const handleUpdateAmount = async (debt: Account, delta: number) => {
-    const newAmount = Math.max(0, Number(debt.balance) + delta);
+  const handleUpdateAvailable = async (debt: Account, delta: number) => {
+    const limitAmount = getDebtLimitAmount(debt);
+    if (limitAmount <= 0) {
+      message.error('请先设置总额度，再调整可用金额');
+      return;
+    }
+
+    const nextAvailable = Math.min(limitAmount, Math.max(0, getDebtAvailableAmount(debt) + delta));
+    const nextUsedAmount = getDebtUsedAmountFromAvailable(limitAmount, nextAvailable);
+
     try {
-      await updateAccount(debt.id, { balance: newAmount });
+      await updateAccount(debt.id, { balance: nextUsedAmount });
       fetchDebts();
-    } catch (error) {
-      message.error('更新失败');
+    } catch (error: any) {
+      message.error(error.message || '更新失败');
     }
   };
 
-  const totalDebt = debts.reduce((sum, d) => sum + Number(d.balance), 0);
-  const totalLimit = debts.reduce((sum, d) => sum + Number(d.limit_amount), 0);
+  const totalDebt = debts.reduce((sum, d) => sum + getDebtUsedAmount(d), 0);
+  const totalLimit = debts.reduce((sum, d) => sum + getDebtLimitAmount(d), 0);
+  const totalAvailable = debts.reduce((sum, d) => sum + getDebtAvailableAmount(d), 0);
 
   return (
     <div>
@@ -122,9 +153,12 @@ export default function Debts() {
         </Col>
         <Col xs={24} sm={12}>
           <Card>
-            <div style={{ color: 'rgba(255,255,255,0.65)', marginBottom: 8 }}>总额度</div>
+            <div style={{ color: 'rgba(255,255,255,0.65)', marginBottom: 8 }}>总可用额度</div>
             <div style={{ fontSize: 28, fontWeight: 'bold', color: '#1890ff' }}>
-              ¥{totalLimit.toLocaleString()}
+              ¥{totalAvailable.toLocaleString()}
+            </div>
+            <div style={{ color: '#666', fontSize: 12, marginTop: 8 }}>
+              总额度 ¥{totalLimit.toLocaleString()}
             </div>
           </Card>
         </Col>
@@ -133,7 +167,11 @@ export default function Debts() {
       {/* 负债列表 */}
       <Row gutter={[16, 16]}>
         {debts.map(debt => {
-          const usage = debt.limit_amount > 0 ? (debt.balance / debt.limit_amount * 100) : 0;
+          const usage = getDebtUsagePercent(debt);
+          const availableAmount = getDebtAvailableAmount(debt);
+          const usedAmount = getDebtUsedAmount(debt);
+          const limitAmount = getDebtLimitAmount(debt);
+          const overLimitAmount = getDebtOverLimitAmount(debt);
 
           return (
             <Col xs={24} sm={12} md={8} key={debt.id}>
@@ -173,23 +211,24 @@ export default function Debts() {
                 )}
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-                  <span style={{ color: '#ff4d4f', fontWeight: 'bold' }}>¥{Number(debt.balance).toLocaleString()}</span>
-                  {debt.limit_amount > 0 && (
-                    <span style={{ color: '#666' }}>/ ¥{Number(debt.limit_amount).toLocaleString()}</span>
+                  <span style={{ color: '#1890ff', fontWeight: 'bold' }}>可用 ¥{availableAmount.toLocaleString()}</span>
+                  {limitAmount > 0 && (
+                    <span style={{ color: '#666' }}>/ 总额度 ¥{limitAmount.toLocaleString()}</span>
                   )}
                 </div>
 
-                {debt.limit_amount > 0 && (
+                {limitAmount > 0 && (
                   <div style={{ color: '#666', fontSize: 13, marginBottom: 12 }}>
-                    剩余额度: ¥{(Number(debt.limit_amount) - Number(debt.balance)).toLocaleString()}
+                    已用 ¥{usedAmount.toLocaleString()}
+                    {overLimitAmount > 0 ? `，已超额 ¥${overLimitAmount.toLocaleString()}` : ''}
                   </div>
                 )}
 
                 <Space>
-                  <Button size="small" onClick={() => handleUpdateAmount(debt, -1000)}>-1000</Button>
-                  <Button size="small" onClick={() => handleUpdateAmount(debt, -100)}>-100</Button>
-                  <Button size="small" type="primary" danger onClick={() => handleUpdateAmount(debt, 100)}>+100</Button>
-                  <Button size="small" type="primary" danger onClick={() => handleUpdateAmount(debt, 1000)}>+1000</Button>
+                  <Button size="small" danger onClick={() => handleUpdateAvailable(debt, -1000)}>-1000</Button>
+                  <Button size="small" danger onClick={() => handleUpdateAvailable(debt, -100)}>-100</Button>
+                  <Button size="small" type="primary" onClick={() => handleUpdateAvailable(debt, 100)}>+100</Button>
+                  <Button size="small" type="primary" onClick={() => handleUpdateAvailable(debt, 1000)}>+1000</Button>
                 </Space>
               </Card>
             </Col>
@@ -215,7 +254,7 @@ export default function Debts() {
           </Form.Item>
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="amount" label="已用金额" initialValue={0} extra="已欠款/已使用">
+              <Form.Item name="available_amount" label="可用金额" initialValue={0} extra="当前还可使用的额度">
                 <InputNumber prefix="¥" precision={0} min={0} style={{ width: '100%' }} />
               </Form.Item>
             </Col>

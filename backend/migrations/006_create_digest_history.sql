@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS digest_history (
+  id BIGINT NOT NULL AUTO_INCREMENT,
+  digest_type ENUM('news', 'github', 'paper') NOT NULL,
+  dedupe_key VARCHAR(255) NOT NULL,
+  title VARCHAR(500) DEFAULT NULL,
+  source VARCHAR(100) DEFAULT NULL,
+  source_id VARCHAR(255) DEFAULT NULL,
+  canonical_url VARCHAR(1000) DEFAULT NULL,
+  published_at DATETIME DEFAULT NULL,
+  first_sent_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_sent_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  sent_count INT NOT NULL DEFAULT 1,
+  meta_json JSON DEFAULT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uniq_digest_type_dedupe_key (digest_type, dedupe_key),
+  KEY idx_digest_type_last_sent_at (digest_type, last_sent_at),
+  KEY idx_digest_type_published_at (digest_type, published_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='晨报/简报去重历史';

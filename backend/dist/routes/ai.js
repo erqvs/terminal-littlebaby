@@ -6,12 +6,124 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const database_1 = __importDefault(require("../config/database"));
 const dayjs_1 = __importDefault(require("dayjs"));
+const goals_1 = require("../utils/goals");
+const budgets_1 = require("../utils/budgets");
+const categories_1 = require("../utils/categories");
+const semester_1 = require("../utils/semester");
+const digestHistory_1 = require("../utils/digestHistory");
 const router = (0, express_1.Router)();
+const COURSE_TIME_SLOTS = [
+    { key: 1, start: '08:10', end: '08:55' },
+    { key: 2, start: '09:05', end: '09:50' },
+    { key: 3, start: '10:10', end: '10:55' },
+    { key: 4, start: '11:05', end: '11:50' },
+    { key: 5, start: '13:30', end: '14:15' },
+    { key: 6, start: '14:25', end: '15:10' },
+    { key: 7, start: '15:30', end: '16:15' },
+    { key: 8, start: '16:25', end: '17:10' },
+    { key: 9, start: '18:20', end: '19:05' },
+    { key: 10, start: '19:10', end: '19:55' },
+    { key: 11, start: '20:00', end: '20:45' },
+    { key: 12, start: '20:50', end: '21:35' },
+];
+const MAX_TIME_SLOT = COURSE_TIME_SLOTS.length;
+const VALID_COURSE_QUERY_MODES = new Set(['auto', 'current', 'next', 'today', 'remaining']);
+function parseJsonArray(value) {
+    if (Array.isArray(value)) {
+        return value;
+    }
+    if (typeof value === 'string') {
+        try {
+            const parsed = JSON.parse(value);
+            return Array.isArray(parsed) ? parsed : [];
+        }
+        catch {
+            return [];
+        }
+    }
+    return [];
+}
+function normalizeNumberList(values, min, max = Number.MAX_SAFE_INTEGER) {
+    return Array.from(new Set(parseJsonArray(values)
+        .map((value) => Number(value))
+        .filter((value) => Number.isInteger(value) && value >= min && value <= max))).sort((left, right) => left - right);
+}
+function normalizeScheduleCourse(row) {
+    return {
+        id: Number(row.id),
+        name: String(row.name),
+        teacher: typeof row.teacher === 'string' && row.teacher.trim() ? row.teacher.trim() : null,
+        location: typeof row.location === 'string' && row.location.trim() ? row.location.trim() : null,
+        color: typeof row.color === 'string' && row.color.trim() ? row.color.trim() : '#1890ff',
+        day_of_week: Number(row.day_of_week),
+        time_slot: normalizeNumberList(row.time_slot, 1, MAX_TIME_SLOT),
+        weeks: normalizeNumberList(row.weeks, 1),
+    };
+}
+function isCourseActiveInWeek(course, week) {
+    return course.weeks.length === 0 || course.weeks.includes(week);
+}
+function getDayIndexFromDate(date) {
+    const jsDay = (0, dayjs_1.default)(date).day();
+    return jsDay === 0 ? 6 : jsDay - 1;
+}
+function parseTimeToMinutes(time) {
+    const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(time);
+    if (!match) {
+        return null;
+    }
+    return Number(match[1]) * 60 + Number(match[2]);
+}
+function formatMinutes(minutes) {
+    const hour = Math.floor(minutes / 60);
+    const minute = minutes % 60;
+    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+function getSlotMeta(slot) {
+    return COURSE_TIME_SLOTS.find((item) => item.key === slot) ?? null;
+}
+function getCourseRangeMinutes(course) {
+    const startSlot = course.time_slot[0];
+    const endSlot = course.time_slot[course.time_slot.length - 1];
+    const startMeta = startSlot ? getSlotMeta(startSlot) : null;
+    const endMeta = endSlot ? getSlotMeta(endSlot) : null;
+    if (!startMeta || !endMeta) {
+        return null;
+    }
+    const startMinutes = parseTimeToMinutes(startMeta.start);
+    const endMinutes = parseTimeToMinutes(endMeta.end);
+    if (startMinutes === null || endMinutes === null) {
+        return null;
+    }
+    return { startMinutes, endMinutes };
+}
+function formatSlotLabel(slots) {
+    if (slots.length === 0) {
+        return '';
+    }
+    const start = slots[0];
+    const end = slots[slots.length - 1];
+    return start === end ? `第${start}节` : `第${start}-${end}节`;
+}
+function mapCourseInfo(course) {
+    const range = getCourseRangeMinutes(course);
+    return {
+        id: course.id,
+        name: course.name,
+        teacher: course.teacher,
+        location: course.location,
+        day_of_week: course.day_of_week,
+        time_slot: course.time_slot,
+        weeks: course.weeks,
+        slot_label: formatSlotLabel(course.time_slot),
+        time_range: range ? `${formatMinutes(range.startMinutes)}-${formatMinutes(range.endMinutes)}` : null,
+    };
+}
 // AI API Key 认证中间件
 function aiAuthMiddleware(req, res, next) {
     const apiKey = req.headers['x-api-key'] || req.query.apiKey;
     // 从环境变量获取 AI API Key，默认值用于开发
-    const validApiKey = process.env.AI_API_KEY || 'REDACTED_API_KEY';
+    const validApiKey = process.env.AI_API_KEY;
     if (apiKey !== validApiKey) {
         res.status(401).json({ error: '无效的 API Key' });
         return;
@@ -21,7 +133,7 @@ function aiAuthMiddleware(req, res, next) {
 // 获取所有分类和账户（供 AI 参考）
 router.get('/context', aiAuthMiddleware, async (req, res) => {
     try {
-        const [categories] = await database_1.default.execute('SELECT id, name, type FROM categories ORDER BY type, name');
+        const [categories] = await database_1.default.execute("SELECT id, name, type FROM categories WHERE kind = 'leaf' ORDER BY type, sort_order, name");
         const [accounts] = await database_1.default.execute('SELECT id, name, type, balance FROM accounts ORDER BY type, name');
         res.json({
             categories,
@@ -52,6 +164,9 @@ router.post('/transaction', aiAuthMiddleware, async (req, res) => {
         const category = categoryRows[0];
         if (!category) {
             return res.status(400).json({ error: '分类不存在' });
+        }
+        if (category.kind !== 'leaf') {
+            return res.status(400).json({ error: '交易记录只能使用普通分类' });
         }
         // 获取账户信息
         const [accountRows] = await connection.execute('SELECT * FROM accounts WHERE id = ?', [account_id]);
@@ -104,18 +219,19 @@ router.post('/transaction', aiAuthMiddleware, async (req, res) => {
 // AI 查询最近交易
 router.get('/recent', aiAuthMiddleware, async (req, res) => {
     try {
-        const limit = parseInt(req.query.limit) || 10;
+        const limit = Math.min(parseInt(req.query.limit) || 10, 100);
         const days = parseInt(req.query.days) || 7;
         const startDate = (0, dayjs_1.default)().subtract(days, 'day').format('YYYY-MM-DD');
-        const [rows] = await database_1.default.execute(`
+        // 使用 query 而不是 execute，因为 LIMIT 不支持 prepared statement
+        const [rows] = await database_1.default.query(`
       SELECT t.*, c.name as category_name, c.type as category_type, a.name as account_name, a.type as account_type
       FROM transactions t
       LEFT JOIN categories c ON t.category_id = c.id
       LEFT JOIN accounts a ON t.account_id = a.id
       WHERE t.date >= ?
       ORDER BY t.date DESC, t.id DESC
-      LIMIT ?
-    `, [startDate, limit]);
+      LIMIT ${limit}
+    `, [startDate]);
         res.json({
             transactions: rows,
             period: `最近 ${days} 天`,
@@ -147,6 +263,81 @@ router.get('/balance', aiAuthMiddleware, async (req, res) => {
     catch (error) {
         console.error('Error fetching balance:', error);
         res.status(500).json({ error: '查询失败' });
+    }
+});
+// AI 查询课程信息（根据日期和时间返回当前课/下一节/当天课程）
+router.get('/course-info', aiAuthMiddleware, async (req, res) => {
+    try {
+        const date = typeof req.query.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date)
+            ? req.query.date
+            : (0, dayjs_1.default)().format('YYYY-MM-DD');
+        const time = typeof req.query.time === 'string' && /^([01]\d|2[0-3]):([0-5]\d)$/.test(req.query.time)
+            ? req.query.time
+            : (0, dayjs_1.default)().format('HH:mm');
+        const mode = typeof req.query.mode === 'string' ? req.query.mode : 'auto';
+        if (!VALID_COURSE_QUERY_MODES.has(mode)) {
+            return res.status(400).json({
+                error: 'mode 参数无效',
+                allowed: Array.from(VALID_COURSE_QUERY_MODES),
+            });
+        }
+        const [semesterRows] = await database_1.default.execute('SELECT * FROM semester_config WHERE is_active = 1 LIMIT 1');
+        const semester = semesterRows[0];
+        if (!semester) {
+            return res.status(404).json({ error: '未找到当前学期配置' });
+        }
+        const startDate = (0, dayjs_1.default)(semester.start_date).format('YYYY-MM-DD');
+        const endDate = (0, dayjs_1.default)(semester.end_date).format('YYYY-MM-DD');
+        const targetDate = (0, dayjs_1.default)(date);
+        if (targetDate.isBefore((0, dayjs_1.default)(startDate), 'day')
+            || targetDate.isAfter((0, dayjs_1.default)(endDate), 'day')) {
+            return res.json({ success: true, courses: [] });
+        }
+        const currentWeek = (0, semester_1.calculateCurrentWeek)(startDate, Number(semester.total_weeks), date);
+        const dayOfWeek = getDayIndexFromDate(date);
+        const currentMinutes = parseTimeToMinutes(time);
+        if (currentMinutes === null) {
+            return res.status(400).json({ error: 'time 参数无效，应为 HH:mm' });
+        }
+        const [rows] = await database_1.default.execute('SELECT * FROM schedule_courses WHERE day_of_week = ?', [dayOfWeek]);
+        const dayCourses = rows
+            .map(normalizeScheduleCourse)
+            .filter((course) => isCourseActiveInWeek(course, currentWeek))
+            .sort((left, right) => (left.time_slot[0] ?? 99) - (right.time_slot[0] ?? 99));
+        const currentCourses = dayCourses.filter((course) => {
+            const range = getCourseRangeMinutes(course);
+            return range !== null && currentMinutes >= range.startMinutes && currentMinutes <= range.endMinutes;
+        });
+        const nextCourse = dayCourses.find((course) => {
+            const range = getCourseRangeMinutes(course);
+            return range !== null && range.startMinutes > currentMinutes;
+        });
+        const nextCourses = nextCourse
+            ? dayCourses.filter((course) => (course.time_slot[0] ?? -1) === (nextCourse.time_slot[0] ?? -2))
+            : [];
+        const remainingCourses = dayCourses.filter((course) => {
+            const range = getCourseRangeMinutes(course);
+            return range !== null && range.endMinutes >= currentMinutes;
+        });
+        const matchedCourses = mode === 'today'
+            ? dayCourses
+            : mode === 'current'
+                ? currentCourses
+                : mode === 'next'
+                    ? nextCourses
+                    : mode === 'remaining'
+                        ? remainingCourses
+                        : currentCourses.length > 0
+                            ? currentCourses
+                            : nextCourses;
+        res.json({
+            success: true,
+            courses: matchedCourses.map(mapCourseInfo),
+        });
+    }
+    catch (error) {
+        console.error('Error fetching course info:', error);
+        res.status(500).json({ error: '查询课程信息失败' });
     }
 });
 // AI 同步账户余额（直接设置余额，不产生交易记录）
@@ -326,15 +517,11 @@ router.get('/transactions', aiAuthMiddleware, async (req, res) => {
             params.push(type);
         }
         sql += ' ORDER BY t.date DESC, t.id DESC';
-        if (limit) {
-            sql += ' LIMIT ?';
-            params.push(parseInt(limit));
-            if (offset) {
-                sql += ' OFFSET ?';
-                params.push(parseInt(offset));
-            }
-        }
-        const [rows] = await database_1.default.execute(sql, params);
+        // 使用 query 而不是 execute，因为 LIMIT/OFFSET 不支持 prepared statement
+        const limitNum = limit ? Math.min(parseInt(limit), 1000) : 100;
+        const offsetNum = offset ? parseInt(offset) : 0;
+        sql += ` LIMIT ${limitNum} OFFSET ${offsetNum}`;
+        const [rows] = await database_1.default.query(sql, params);
         // 统计汇总
         const summary = {
             total_count: rows.length,
@@ -382,11 +569,15 @@ router.put('/transaction/:id', aiAuthMiddleware, async (req, res) => {
         const newAccountId = account_id || oldTransaction.account_id;
         const newAmount = amount !== undefined ? amount : oldTransaction.amount;
         // 获取新分类类型
-        const [categoryRows] = await connection.execute('SELECT type FROM categories WHERE id = ?', [newCategoryId]);
+        const [categoryRows] = await connection.execute('SELECT type, kind FROM categories WHERE id = ?', [newCategoryId]);
         const newCategory = categoryRows[0];
         if (!newCategory) {
             await connection.rollback();
             return res.status(400).json({ error: '分类不存在' });
+        }
+        if (newCategory.kind !== 'leaf') {
+            await connection.rollback();
+            return res.status(400).json({ error: '交易记录只能使用普通分类' });
         }
         // 获取账户信息
         const [accountRows] = await connection.execute('SELECT * FROM accounts WHERE id = ?', [newAccountId]);
@@ -523,18 +714,24 @@ router.delete('/transaction/:id', aiAuthMiddleware, async (req, res) => {
 // AI 获取所有分类
 router.get('/categories', aiAuthMiddleware, async (req, res) => {
     try {
-        const { type } = req.query;
-        let sql = 'SELECT * FROM categories';
-        const params = [];
-        if (type && (type === 'income' || type === 'expense')) {
-            sql += ' WHERE type = ?';
-            params.push(type);
+        const kindInput = typeof req.query.kind === 'string' ? req.query.kind : undefined;
+        const typeInput = typeof req.query.type === 'string' ? req.query.type : undefined;
+        const includeMembers = req.query.include_members === 'true' || req.query.includeMembers === 'true';
+        const kind = kindInput && kindInput !== 'all'
+            ? ((0, categories_1.isCategoryKind)(kindInput) ? kindInput : null)
+            : kindInput === 'all'
+                ? 'all'
+                : undefined;
+        if (kind === null) {
+            return res.status(400).json({ error: '分类 kind 参数无效' });
         }
-        sql += ' ORDER BY type, name';
-        const [rows] = await database_1.default.execute(sql, params);
+        const type = typeInput ? ((0, categories_1.isCategoryType)(typeInput) ? typeInput : null) : undefined;
+        if (type === null) {
+            return res.status(400).json({ error: '分类 type 参数无效' });
+        }
         res.json({
             success: true,
-            categories: rows,
+            categories: await (0, categories_1.loadCategories)({ kind, type, includeMembers }),
         });
     }
     catch (error) {
@@ -544,25 +741,56 @@ router.get('/categories', aiAuthMiddleware, async (req, res) => {
 });
 // AI 创建分类
 router.post('/category', aiAuthMiddleware, async (req, res) => {
+    const { name, type, icon, kind = 'leaf', member_ids } = req.body ?? {};
+    if (typeof name !== 'string' || !name.trim() || name.trim().length > 100) {
+        return res.status(400).json({ error: '分类名称不能为空且不能超过 100 个字符' });
+    }
+    if (!(0, categories_1.isCategoryType)(type)) {
+        return res.status(400).json({ error: '分类类型必须是 income 或 expense' });
+    }
+    if (!(0, categories_1.isCategoryKind)(kind)) {
+        return res.status(400).json({ error: '分类 kind 参数无效' });
+    }
+    if (icon !== undefined && icon !== null && (typeof icon !== 'string' || icon.length > 50)) {
+        return res.status(400).json({ error: '图标标识不能超过 50 个字符' });
+    }
+    const normalizedName = name.trim();
+    const normalizedIcon = typeof icon === 'string' && icon.trim() ? icon.trim() : null;
     try {
-        const { name, type, icon } = req.body;
-        if (!name) {
-            return res.status(400).json({ error: '分类名称不能为空' });
+        let memberIds = [];
+        if (kind === 'group') {
+            const validation = await (0, categories_1.validateGroupMembers)(type, member_ids);
+            if ('error' in validation) {
+                return res.status(400).json({ error: validation.error });
+            }
+            memberIds = validation.memberIds;
         }
-        if (!type || !['income', 'expense'].includes(type)) {
-            return res.status(400).json({ error: '分类类型必须是 income 或 expense' });
+        const sortOrder = await (0, categories_1.resolveNextCategorySortOrder)(type, kind);
+        const connection = await database_1.default.getConnection();
+        try {
+            await connection.beginTransaction();
+            const [result] = await connection.execute('INSERT INTO categories (name, type, icon, kind, sort_order) VALUES (?, ?, ?, ?, ?)', [normalizedName, type, normalizedIcon, kind, sortOrder]);
+            const categoryId = Number(result.insertId);
+            if (kind === 'group' && memberIds.length > 0) {
+                for (const memberId of memberIds) {
+                    await connection.execute('INSERT INTO category_group_members (group_id, member_category_id) VALUES (?, ?)', [categoryId, memberId]);
+                }
+            }
+            await connection.commit();
+            const category = await (0, categories_1.loadCategoryById)(categoryId);
+            res.status(201).json({
+                success: true,
+                category,
+                message: `分类「${normalizedName}」创建成功`,
+            });
         }
-        const [result] = await database_1.default.execute('INSERT INTO categories (name, type, icon) VALUES (?, ?, ?)', [name, type, icon || null]);
-        res.status(201).json({
-            success: true,
-            category: {
-                id: result.insertId,
-                name,
-                type,
-                icon: icon || null,
-            },
-            message: `分类「${name}」创建成功`,
-        });
+        catch (error) {
+            await connection.rollback();
+            throw error;
+        }
+        finally {
+            connection.release();
+        }
     }
     catch (error) {
         console.error('Error creating category:', error);
@@ -572,29 +800,65 @@ router.post('/category', aiAuthMiddleware, async (req, res) => {
 // AI 更新分类
 router.put('/category/:id', aiAuthMiddleware, async (req, res) => {
     try {
-        const { id } = req.params;
-        const { name, type, icon } = req.body;
-        // 获取现有分类
-        const [existingRows] = await database_1.default.execute('SELECT * FROM categories WHERE id = ?', [id]);
-        const existing = existingRows[0];
+        const id = Number(req.params.id);
+        const { name, type, icon, member_ids } = req.body ?? {};
+        if (!Number.isInteger(id) || id <= 0) {
+            return res.status(400).json({ error: '无效的分类 ID' });
+        }
+        const existing = await (0, categories_1.loadCategoryById)(id);
         if (!existing) {
             return res.status(404).json({ error: '分类不存在' });
         }
-        const newType = type || existing.type;
-        if (newType && !['income', 'expense'].includes(newType)) {
+        if (name !== undefined && (typeof name !== 'string' || !name.trim() || name.trim().length > 100)) {
+            return res.status(400).json({ error: '分类名称不能为空且不能超过 100 个字符' });
+        }
+        if (type !== undefined && !(0, categories_1.isCategoryType)(type)) {
             return res.status(400).json({ error: '分类类型必须是 income 或 expense' });
         }
-        await database_1.default.execute('UPDATE categories SET name = ?, type = ?, icon = ? WHERE id = ?', [name || existing.name, newType, icon !== undefined ? icon : existing.icon, id]);
-        res.json({
-            success: true,
-            category: {
-                id: parseInt(String(id)),
-                name: name || existing.name,
-                type: newType,
-                icon: icon !== undefined ? icon : existing.icon,
-            },
-            message: '分类已更新',
-        });
+        if (icon !== undefined && icon !== null && (typeof icon !== 'string' || icon.length > 50)) {
+            return res.status(400).json({ error: '图标标识不能超过 50 个字符' });
+        }
+        if (existing.kind === 'leaf' && member_ids !== undefined) {
+            return res.status(400).json({ error: '普通分类不能设置成员分类' });
+        }
+        const nextType = (type || existing.type);
+        const nextName = typeof name === 'string' ? name.trim() : existing.name;
+        const nextIcon = icon === undefined
+            ? existing.icon
+            : (typeof icon === 'string' && icon.trim() ? icon.trim() : null);
+        let memberIds = existing.member_ids || [];
+        if (existing.kind === 'group') {
+            const validation = await (0, categories_1.validateGroupMembers)(nextType, member_ids !== undefined ? member_ids : memberIds, id);
+            if ('error' in validation) {
+                return res.status(400).json({ error: validation.error });
+            }
+            memberIds = validation.memberIds;
+        }
+        const connection = await database_1.default.getConnection();
+        try {
+            await connection.beginTransaction();
+            await connection.execute('UPDATE categories SET name = ?, type = ?, icon = ? WHERE id = ?', [nextName, nextType, nextIcon, id]);
+            if (existing.kind === 'group') {
+                await connection.execute('DELETE FROM category_group_members WHERE group_id = ?', [id]);
+                for (const memberId of memberIds) {
+                    await connection.execute('INSERT INTO category_group_members (group_id, member_category_id) VALUES (?, ?)', [id, memberId]);
+                }
+            }
+            await connection.commit();
+            const category = await (0, categories_1.loadCategoryById)(id);
+            res.json({
+                success: true,
+                category,
+                message: '分类已更新',
+            });
+        }
+        catch (error) {
+            await connection.rollback();
+            throw error;
+        }
+        finally {
+            connection.release();
+        }
     }
     catch (error) {
         console.error('Error updating category:', error);
@@ -604,20 +868,36 @@ router.put('/category/:id', aiAuthMiddleware, async (req, res) => {
 // AI 删除分类
 router.delete('/category/:id', aiAuthMiddleware, async (req, res) => {
     try {
-        const { id } = req.params;
-        // 检查是否有关联的交易记录
-        const [transactions] = await database_1.default.execute('SELECT COUNT(*) as count FROM transactions WHERE category_id = ?', [id]);
-        if (transactions[0].count > 0) {
-            return res.status(400).json({
-                error: '该分类有关联的交易记录，无法删除',
-                related_count: transactions[0].count,
-            });
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id) || id <= 0) {
+            return res.status(400).json({ error: '无效的分类 ID' });
         }
-        // 获取分类信息用于返回
-        const [categoryRows] = await database_1.default.execute('SELECT * FROM categories WHERE id = ?', [id]);
-        const category = categoryRows[0];
+        const category = await (0, categories_1.loadCategoryById)(id);
         if (!category) {
             return res.status(404).json({ error: '分类不存在' });
+        }
+        const [budgetRefs] = await database_1.default.execute('SELECT COUNT(*) as count FROM budgets WHERE category_id = ?', [id]);
+        if (Number(budgetRefs[0]?.count || 0) > 0) {
+            return res.status(400).json({
+                error: '该分类已被预算使用，无法删除',
+                related_count: Number(budgetRefs[0]?.count || 0),
+            });
+        }
+        if (category.kind === 'leaf') {
+            const [transactions] = await database_1.default.execute('SELECT COUNT(*) as count FROM transactions WHERE category_id = ?', [id]);
+            if (Number(transactions[0]?.count || 0) > 0) {
+                return res.status(400).json({
+                    error: '该分类有关联的交易记录，无法删除',
+                    related_count: Number(transactions[0]?.count || 0),
+                });
+            }
+            const [groupRefs] = await database_1.default.execute('SELECT COUNT(*) as count FROM category_group_members WHERE member_category_id = ?', [id]);
+            if (Number(groupRefs[0]?.count || 0) > 0) {
+                return res.status(400).json({
+                    error: '该分类已被组合分类使用，无法删除',
+                    related_count: Number(groupRefs[0]?.count || 0),
+                });
+            }
         }
         await database_1.default.execute('DELETE FROM categories WHERE id = ?', [id]);
         res.json({
@@ -631,17 +911,142 @@ router.delete('/category/:id', aiAuthMiddleware, async (req, res) => {
     }
 });
 // ==================== 目标管理 ====================
+// ==================== 预算管理 ====================
+router.get('/budgets', aiAuthMiddleware, async (req, res) => {
+    const parsed = (0, budgets_1.parseBudgetYearMonth)(req.query.year, req.query.month);
+    if ('error' in parsed) {
+        return res.status(400).json({ error: parsed.error });
+    }
+    const { year, month } = parsed;
+    try {
+        res.json({
+            success: true,
+            year,
+            month,
+            budgets: await (0, budgets_1.fetchBudgetsByWhere)('WHERE b.year = ? AND b.month = ?', [year, month], year, month),
+        });
+    }
+    catch (error) {
+        console.error('Error fetching budgets:', error);
+        res.status(500).json({ error: '获取预算失败' });
+    }
+});
+router.post('/budget', aiAuthMiddleware, async (req, res) => {
+    try {
+        const { category_id, year, month, budget_amount, alert_threshold, note, sort_order } = req.body;
+        if (!category_id || !year || !month || !budget_amount) {
+            return res.status(400).json({
+                error: '缺少必填字段',
+                required: ['category_id', 'year', 'month', 'budget_amount'],
+                optional: ['alert_threshold', 'note', 'sort_order'],
+            });
+        }
+        const parsed = (0, budgets_1.parseBudgetYearMonth)(year, month);
+        if ('error' in parsed) {
+            return res.status(400).json({ error: parsed.error });
+        }
+        const categoryCheck = await (0, budgets_1.ensureExpenseBudgetCategory)(Number(category_id));
+        if ('error' in categoryCheck) {
+            return res.status(400).json({ error: categoryCheck.error });
+        }
+        const [result] = await database_1.default.execute(`INSERT INTO budgets (category_id, year, month, budget_amount, alert_threshold, note, sort_order)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`, [
+            category_id,
+            parsed.year,
+            parsed.month,
+            budget_amount,
+            alert_threshold ?? 80,
+            note ?? null,
+            sort_order ?? 0,
+        ]);
+        const budget = (await (0, budgets_1.fetchBudgetsByWhere)('WHERE b.id = ?', [Number(result.insertId)], parsed.year, parsed.month))[0];
+        res.status(201).json({
+            success: true,
+            budget,
+            message: '预算已创建',
+        });
+    }
+    catch (error) {
+        if (error?.code === 'ER_DUP_ENTRY') {
+            return res.status(400).json({ error: '该分类本月预算已存在' });
+        }
+        console.error('Error creating budget:', error);
+        res.status(500).json({ error: '创建预算失败' });
+    }
+});
+router.put('/budget/:id', aiAuthMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { category_id, year, month, budget_amount, alert_threshold, note, sort_order } = req.body;
+        const [existingRows] = await database_1.default.execute('SELECT * FROM budgets WHERE id = ?', [id]);
+        const existing = existingRows[0];
+        if (!existing) {
+            return res.status(404).json({ error: '预算不存在' });
+        }
+        const nextCategoryId = category_id !== undefined ? Number(category_id) : Number(existing.category_id);
+        const nextYear = year !== undefined ? Number(year) : Number(existing.year);
+        const nextMonth = month !== undefined ? Number(month) : Number(existing.month);
+        const parsed = (0, budgets_1.parseBudgetYearMonth)(nextYear, nextMonth);
+        if ('error' in parsed) {
+            return res.status(400).json({ error: parsed.error });
+        }
+        const categoryCheck = await (0, budgets_1.ensureExpenseBudgetCategory)(nextCategoryId);
+        if ('error' in categoryCheck) {
+            return res.status(400).json({ error: categoryCheck.error });
+        }
+        await database_1.default.execute(`UPDATE budgets
+       SET category_id = ?, year = ?, month = ?, budget_amount = ?, alert_threshold = ?, note = ?, sort_order = ?
+       WHERE id = ?`, [
+            nextCategoryId,
+            parsed.year,
+            parsed.month,
+            budget_amount !== undefined ? budget_amount : existing.budget_amount,
+            alert_threshold !== undefined ? alert_threshold : existing.alert_threshold,
+            note !== undefined ? note : existing.note,
+            sort_order !== undefined ? sort_order : existing.sort_order,
+            id,
+        ]);
+        const budget = (await (0, budgets_1.fetchBudgetsByWhere)('WHERE b.id = ?', [Number(id)], parsed.year, parsed.month))[0];
+        res.json({
+            success: true,
+            budget,
+            message: '预算已更新',
+        });
+    }
+    catch (error) {
+        if (error?.code === 'ER_DUP_ENTRY') {
+            return res.status(400).json({ error: '该分类本月预算已存在' });
+        }
+        console.error('Error updating budget:', error);
+        res.status(500).json({ error: '更新预算失败' });
+    }
+});
+router.delete('/budget/:id', aiAuthMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const [budgetRows] = await database_1.default.execute('SELECT * FROM budgets WHERE id = ?', [id]);
+        const budget = budgetRows[0];
+        if (!budget) {
+            return res.status(404).json({ error: '预算不存在' });
+        }
+        await database_1.default.execute('DELETE FROM budgets WHERE id = ?', [id]);
+        res.json({
+            success: true,
+            message: `预算「${budget.id}」已删除`,
+        });
+    }
+    catch (error) {
+        console.error('Error deleting budget:', error);
+        res.status(500).json({ error: '删除预算失败' });
+    }
+});
+// ==================== 目标管理 ====================
 // AI 获取所有目标
 router.get('/goals', aiAuthMiddleware, async (req, res) => {
     try {
-        const [rows] = await database_1.default.execute('SELECT * FROM goals ORDER BY is_completed, sort_order, id');
-        const goals = rows.map(g => ({
-            ...g,
-            progress: g.target_amount > 0 ? Math.min(100, (Number(g.current_amount) / Number(g.target_amount)) * 100) : 0,
-        }));
         res.json({
             success: true,
-            goals,
+            goals: await (0, goals_1.fetchDecoratedGoals)(),
         });
     }
     catch (error) {
@@ -652,27 +1057,19 @@ router.get('/goals', aiAuthMiddleware, async (req, res) => {
 // AI 创建目标
 router.post('/goal', aiAuthMiddleware, async (req, res) => {
     try {
-        const { name, icon, color, target_amount, current_amount, deadline, sort_order } = req.body;
+        const { name, icon, color, target_amount, deadline, sort_order } = req.body;
         if (!name) {
             return res.status(400).json({ error: '目标名称不能为空' });
         }
         if (!target_amount || target_amount <= 0) {
             return res.status(400).json({ error: '目标金额必须大于 0' });
         }
-        const [result] = await database_1.default.execute('INSERT INTO goals (name, icon, color, target_amount, current_amount, deadline, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)', [name, icon || 'target', color || '#52c41a', target_amount, current_amount || 0, deadline || null, sort_order || 0]);
+        const nextSortOrder = await (0, goals_1.resolveNextGoalSortOrder)(sort_order);
+        const [result] = await database_1.default.execute('INSERT INTO goals (name, icon, color, target_amount, current_amount, deadline, is_completed, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [name, icon || 'target', color || '#52c41a', target_amount, 0, deadline || null, 0, nextSortOrder]);
+        const goal = (await (0, goals_1.fetchDecoratedGoals)()).find((item) => Number(item.id) === Number(result.insertId));
         res.status(201).json({
             success: true,
-            goal: {
-                id: result.insertId,
-                name,
-                icon: icon || 'target',
-                color: color || '#52c41a',
-                target_amount,
-                current_amount: current_amount || 0,
-                deadline: deadline || null,
-                sort_order: sort_order || 0,
-                is_completed: false,
-            },
+            goal,
             message: `目标「${name}」创建成功`,
         });
     }
@@ -681,44 +1078,52 @@ router.post('/goal', aiAuthMiddleware, async (req, res) => {
         res.status(500).json({ error: '创建目标失败' });
     }
 });
+// AI 调整目标顺序
+router.put('/goal/reorder', aiAuthMiddleware, async (req, res) => {
+    try {
+        const result = await (0, goals_1.reorderGoals)(req.body?.goal_ids);
+        if ('error' in result) {
+            return res.status(400).json({ error: result.error });
+        }
+        res.json({
+            success: true,
+            goals: result.goals,
+            message: '目标顺序已更新',
+        });
+    }
+    catch (error) {
+        console.error('Error reordering goals:', error);
+        res.status(500).json({ error: '调整目标顺序失败' });
+    }
+});
 // AI 更新目标
 router.put('/goal/:id', aiAuthMiddleware, async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, icon, color, target_amount, current_amount, deadline, is_completed, sort_order } = req.body;
+        const { name, icon, color, target_amount, deadline, sort_order } = req.body;
         // 获取现有目标
         const [existingRows] = await database_1.default.execute('SELECT * FROM goals WHERE id = ?', [id]);
         const existing = existingRows[0];
         if (!existing) {
             return res.status(404).json({ error: '目标不存在' });
         }
+        const newTargetAmount = target_amount !== undefined ? target_amount : existing.target_amount;
+        const newSortOrder = sort_order !== undefined ? sort_order : existing.sort_order;
         await database_1.default.execute('UPDATE goals SET name = ?, icon = ?, color = ?, target_amount = ?, current_amount = ?, deadline = ?, is_completed = ?, sort_order = ? WHERE id = ?', [
             name || existing.name,
             icon || existing.icon,
             color || existing.color,
-            target_amount !== undefined ? target_amount : existing.target_amount,
-            current_amount !== undefined ? current_amount : existing.current_amount,
+            newTargetAmount,
+            existing.current_amount,
             deadline !== undefined ? deadline : existing.deadline,
-            is_completed !== undefined ? is_completed : existing.is_completed,
-            sort_order !== undefined ? sort_order : existing.sort_order,
+            existing.is_completed,
+            newSortOrder,
             id,
         ]);
-        const newCurrentAmount = current_amount !== undefined ? current_amount : existing.current_amount;
-        const newTargetAmount = target_amount !== undefined ? target_amount : existing.target_amount;
+        const goal = (await (0, goals_1.fetchDecoratedGoals)()).find((item) => Number(item.id) === Number(id));
         res.json({
             success: true,
-            goal: {
-                id: parseInt(String(id)),
-                name: name || existing.name,
-                icon: icon || existing.icon,
-                color: color || existing.color,
-                target_amount: newTargetAmount,
-                current_amount: newCurrentAmount,
-                deadline: deadline !== undefined ? deadline : existing.deadline,
-                is_completed: is_completed !== undefined ? is_completed : existing.is_completed,
-                sort_order: sort_order !== undefined ? sort_order : existing.sort_order,
-                progress: newTargetAmount > 0 ? Math.min(100, (Number(newCurrentAmount) / Number(newTargetAmount)) * 100) : 0,
-            },
+            goal,
             message: '目标已更新',
         });
     }
@@ -746,6 +1151,86 @@ router.delete('/goal/:id', aiAuthMiddleware, async (req, res) => {
     catch (error) {
         console.error('Error deleting goal:', error);
         res.status(500).json({ error: '删除目标失败' });
+    }
+});
+// ==================== 简报去重历史 ====================
+function parseDigestHistoryItems(value) {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+    return value
+        .filter((item) => item && typeof item === 'object')
+        .map((item) => {
+        const entry = item;
+        return {
+            title: typeof entry.title === 'string' ? entry.title : undefined,
+            source: typeof entry.source === 'string' ? entry.source : undefined,
+            source_id: typeof entry.source_id === 'string' ? entry.source_id : undefined,
+            canonical_url: typeof entry.canonical_url === 'string' ? entry.canonical_url : undefined,
+            published_at: typeof entry.published_at === 'string' ? entry.published_at : undefined,
+            dedupe_key: typeof entry.dedupe_key === 'string' ? entry.dedupe_key : undefined,
+            doi: typeof entry.doi === 'string' ? entry.doi : undefined,
+            arxiv_id: typeof entry.arxiv_id === 'string' ? entry.arxiv_id : undefined,
+            openalex_id: typeof entry.openalex_id === 'string' ? entry.openalex_id : undefined,
+            repo_full_name: typeof entry.repo_full_name === 'string' ? entry.repo_full_name : undefined,
+            meta: entry.meta && typeof entry.meta === 'object' && !Array.isArray(entry.meta)
+                ? entry.meta
+                : null,
+        };
+    });
+}
+router.post('/digest-history/check', aiAuthMiddleware, async (req, res) => {
+    try {
+        const digestType = req.body?.digest_type;
+        const items = parseDigestHistoryItems(req.body?.items);
+        const windowDaysRaw = req.body?.window_days;
+        const windowDays = windowDaysRaw === undefined || windowDaysRaw === null
+            ? 7
+            : Number.parseInt(String(windowDaysRaw), 10);
+        if (!(0, digestHistory_1.isDigestType)(digestType)) {
+            return res.status(400).json({ error: 'digest_type 必须是 news、github 或 paper' });
+        }
+        if (!Number.isInteger(windowDays) || windowDays < 1 || windowDays > 3650) {
+            return res.status(400).json({ error: 'window_days 必须是 1 到 3650 之间的整数' });
+        }
+        if (items.length === 0) {
+            return res.status(400).json({ error: 'items 不能为空' });
+        }
+        const result = await (0, digestHistory_1.checkDigestHistory)(digestType, items, windowDays);
+        res.json({
+            success: true,
+            digest_type: digestType,
+            window_days: windowDays,
+            items: result,
+        });
+    }
+    catch (error) {
+        console.error('Error checking digest history:', error);
+        res.status(500).json({ error: error?.message || '检查简报去重历史失败' });
+    }
+});
+router.post('/digest-history/record', aiAuthMiddleware, async (req, res) => {
+    try {
+        const digestType = req.body?.digest_type;
+        const items = parseDigestHistoryItems(req.body?.items);
+        const sentAt = typeof req.body?.sent_at === 'string' ? req.body.sent_at : undefined;
+        if (!(0, digestHistory_1.isDigestType)(digestType)) {
+            return res.status(400).json({ error: 'digest_type 必须是 news、github 或 paper' });
+        }
+        if (items.length === 0) {
+            return res.status(400).json({ error: 'items 不能为空' });
+        }
+        const result = await (0, digestHistory_1.recordDigestHistory)(digestType, items, sentAt);
+        res.json({
+            success: true,
+            digest_type: digestType,
+            items: result,
+            message: '简报历史已记录',
+        });
+    }
+    catch (error) {
+        console.error('Error recording digest history:', error);
+        res.status(500).json({ error: error?.message || '记录简报去重历史失败' });
     }
 });
 exports.default = router;

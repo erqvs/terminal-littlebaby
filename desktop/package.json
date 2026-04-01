@@ -1,0 +1,34 @@
+{
+  "name": "terminal-claw-desktop",
+  "productName": "terminal-claw",
+  "version": "0.1.0",
+  "description": "Mac desktop shell for terminal-claw",
+  "main": "main.js",
+  "author": "your-org",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-org/terminal-claw.git"
+  },
+  "scripts": {
+    "start": "electron-forge start",
+    "package": "electron-forge package",
+    "make": "electron-forge make",
+    "publish": "electron-forge publish"
+  },
+  "config": {
+    "forge": "./forge.config.js"
+  },
+  "dependencies": {
+    "update-electron-app": "^3.1.2"
+  },
+  "devDependencies": {
+    "@electron-forge/cli": "^7.11.1",
+    "@electron-forge/maker-dmg": "^7.11.1",
+    "@electron-forge/maker-zip": "^7.11.1",
+    "@electron-forge/plugin-fuses": "^7.11.1",
+    "@electron-forge/publisher-github": "^7.11.1",
+    "@electron/fuses": "^1.8.0",
+    "electron": "^41.1.0"
+  }
+}
