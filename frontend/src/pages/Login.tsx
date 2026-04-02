@@ -11,7 +11,6 @@ interface LoginForm {
 
 interface LoginResponse {
   success: boolean;
-  token?: string;
   message?: string;
   locked?: boolean;
 }
@@ -27,8 +26,7 @@ export default function Login() {
     setLoading(true);
     try {
       const res: LoginResponse = await login(values.password);
-      if (res.success && res.token) {
-        localStorage.setItem('token', res.token);
+      if (res.success) {
         message.success('登录成功');
         navigate('/');
       } else {

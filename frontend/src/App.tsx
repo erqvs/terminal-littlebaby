@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, NavLink, useLocation, Navigate } from 'react-router-dom';
-import { Button, Layout, Menu, ConfigProvider, theme } from 'antd';
+import { Button, Layout, Menu, ConfigProvider, theme, Spin } from 'antd';
 import type { MenuProps } from 'antd';
 import { DashboardIcon, TransactionIcon, WalletIcon, CreditIcon, TargetIcon, ScheduleIcon, TaskIcon, LogoutIcon, BudgetIcon, CategoryIcon } from './components/Icons';
 import QuickAddButton from './components/QuickAddButton';
-import { isAuthenticated, logout } from './services/api';
+import { logout, verifyAuth } from './services/api';
 import Dashboard from './pages/Dashboard';
 import Accounts from './pages/Accounts';
 import Debts from './pages/Debts';
@@ -45,8 +45,8 @@ function MainLayout({ children }: { children: React.ReactNode }) {
   const activeOpenKey = getOpenMenuKey(location.pathname);
   const [openKeys, setOpenKeys] = useState<string[]>(activeOpenKey ? [activeOpenKey] : []);
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     window.location.href = '/login';
   };
 
@@ -130,7 +130,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
             type="text"
             icon={<LogoutIcon />}
             className="sider-logout-button"
-            onClick={handleLogout}
+            onClick={() => { void handleLogout(); }}
           >
             {!collapsed && '退出登录'}
           </Button>
@@ -149,6 +149,30 @@ function MainLayout({ children }: { children: React.ReactNode }) {
 function AppContent() {
   const location = useLocation();
   const isLoginPage = location.pathname === '/login';
+  const [authState, setAuthState] = useState<'checking' | 'authenticated' | 'unauthenticated'>('checking');
+
+  useEffect(() => {
+    let active = true;
+
+    if (isLoginPage) {
+      setAuthState('unauthenticated');
+      return () => {
+        active = false;
+      };
+    }
+
+    setAuthState('checking');
+    void verifyAuth().then((valid) => {
+      if (!active) {
+        return;
+      }
+      setAuthState(valid ? 'authenticated' : 'unauthenticated');
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [isLoginPage, location.pathname]);
 
   // 登录页直接渲染，不做认证检查
   if (isLoginPage) {
@@ -159,8 +183,16 @@ function AppContent() {
     );
   }
 
+  if (authState === 'checking') {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <Spin size="large" />
+      </div>
+    );
+  }
+
   // 其他页面：先检查认证，未认证不渲染布局，直接跳转
-  if (!isAuthenticated()) {
+  if (authState !== 'authenticated') {
     return <Navigate to="/login" replace />;
   }
 

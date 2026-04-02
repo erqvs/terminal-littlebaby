@@ -1,6 +1,6 @@
+import './bootstrap';
 import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import transactionsRouter from './routes/transactions';
 import categoriesRouter from './routes/categories';
 import accountsRouter from './routes/accounts';
@@ -12,11 +12,14 @@ import scheduleRouter from './routes/schedule';
 import semesterRouter from './routes/semester';
 import authRouter, { authMiddleware } from './routes/auth';
 import aiRouter from './routes/ai';
-
-dotenv.config();
+import { validateSecurityConfiguration } from './utils/security';
 
 const app: Express = express();
 const PORT = process.env.PORT || 3000;
+
+validateSecurityConfiguration();
+app.disable('x-powered-by');
+app.set('trust proxy', 'loopback, linklocal, uniquelocal');
 
 // 允许的域名列表
 const allowedOrigins = [
@@ -46,8 +49,11 @@ app.use(cors({
 app.use((req: Request, res: Response, next: NextFunction) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-  res.removeHeader('X-Powered-By');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'; base-uri 'none'");
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains');
+  }
   
   // 保存原始 json 方法
   const originalJson = res.json.bind(res);

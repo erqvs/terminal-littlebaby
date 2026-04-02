@@ -7,10 +7,10 @@ exports.verifyToken = verifyToken;
 exports.authMiddleware = authMiddleware;
 const express_1 = require("express");
 const crypto_1 = __importDefault(require("crypto"));
+const security_1 = require("../utils/security");
 const router = (0, express_1.Router)();
-// 从环境变量获取密码，默认为 'admin123'
-const APP_PASSWORD = process.env.APP_PASSWORD || 'admin123';
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const TOKEN_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const COOKIE_SECURE = process.env.NODE_ENV === 'production';
 // 安全配置
 const MAX_ATTEMPTS = 5; // 最大失败次数
 const LOCKOUT_TIME = 15 * 60 * 1000; // 锁定时间：15分钟
@@ -70,21 +70,60 @@ function recordSuccess(ip) {
 }
 // 获取客户端IP
 function getClientIp(req) {
-    const forwarded = req.headers['x-forwarded-for'];
-    if (typeof forwarded === 'string') {
-        return forwarded.split(',')[0].trim();
+    return req.ip || req.socket.remoteAddress || 'unknown';
+}
+function parseCookieValue(req, name) {
+    const cookieHeader = req.headers.cookie;
+    if (!cookieHeader) {
+        return null;
     }
-    return req.socket.remoteAddress || 'unknown';
+    const cookies = cookieHeader.split(';');
+    for (const cookie of cookies) {
+        const [rawName, ...rawValueParts] = cookie.trim().split('=');
+        if (rawName !== name) {
+            continue;
+        }
+        const rawValue = rawValueParts.join('=');
+        return rawValue ? decodeURIComponent(rawValue) : null;
+    }
+    return null;
+}
+function readTokenFromRequest(req) {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        return authHeader.slice(7);
+    }
+    return parseCookieValue(req, security_1.AUTH_COOKIE_NAME);
+}
+function setNoStore(res) {
+    res.setHeader('Cache-Control', 'no-store');
+}
+function setSessionCookie(res, token) {
+    res.cookie(security_1.AUTH_COOKIE_NAME, token, {
+        httpOnly: true,
+        sameSite: 'strict',
+        secure: COOKIE_SECURE,
+        maxAge: TOKEN_MAX_AGE_MS,
+        path: '/',
+    });
+}
+function clearSessionCookie(res) {
+    res.clearCookie(security_1.AUTH_COOKIE_NAME, {
+        httpOnly: true,
+        sameSite: 'strict',
+        secure: COOKIE_SECURE,
+        path: '/',
+    });
 }
 // 生成简单 token
 function generateToken() {
     const payload = {
         iat: Date.now(),
-        exp: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 天过期
+        exp: Date.now() + TOKEN_MAX_AGE_MS,
     };
-    const data = Buffer.from(JSON.stringify(payload)).toString('base64');
+    const data = Buffer.from(JSON.stringify(payload)).toString('base64url');
     const signature = crypto_1.default
-        .createHmac('sha256', JWT_SECRET)
+        .createHmac('sha256', security_1.JWT_SECRET)
         .update(data)
         .digest('hex');
     return `${data}.${signature}`;
@@ -93,13 +132,16 @@ function generateToken() {
 function verifyToken(token) {
     try {
         const [data, signature] = token.split('.');
+        if (!data || !signature) {
+            return false;
+        }
         const expectedSignature = crypto_1.default
-            .createHmac('sha256', JWT_SECRET)
+            .createHmac('sha256', security_1.JWT_SECRET)
             .update(data)
             .digest('hex');
-        if (signature !== expectedSignature)
+        if (!(0, security_1.timingSafeEqualString)(signature, expectedSignature))
             return false;
-        const payload = JSON.parse(Buffer.from(data, 'base64').toString());
+        const payload = JSON.parse(Buffer.from(data, 'base64url').toString());
         return payload.exp > Date.now();
     }
     catch {
@@ -108,13 +150,13 @@ function verifyToken(token) {
 }
 // 认证中间件
 function authMiddleware(req, res, next) {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const token = readTokenFromRequest(req);
+    if (!token) {
         res.status(401).json({ error: '未授权访问' });
         return;
     }
-    const token = authHeader.slice(7);
     if (!verifyToken(token)) {
+        clearSessionCookie(res);
         res.status(401).json({ error: 'Token 无效或已过期' });
         return;
     }
@@ -122,6 +164,7 @@ function authMiddleware(req, res, next) {
 }
 // 登录接口
 router.post('/login', (req, res) => {
+    setNoStore(res);
     const ip = getClientIp(req);
     // 检查是否被锁定
     const lockStatus = isLocked(ip);
@@ -147,9 +190,10 @@ router.post('/login', (req, res) => {
         res.status(400).json({ success: false, message: '请输入密码' });
         return;
     }
-    if (password === APP_PASSWORD) {
+    if ((0, security_1.timingSafeEqualString)(password, security_1.APP_PASSWORD)) {
         recordSuccess(ip);
         const token = generateToken();
+        setSessionCookie(res, token);
         res.json({ success: true, token });
     }
     else {
@@ -174,12 +218,21 @@ router.post('/login', (req, res) => {
 });
 // 验证 token 接口
 router.get('/verify', (req, res) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    setNoStore(res);
+    const token = readTokenFromRequest(req);
+    if (!token) {
         res.json({ valid: false });
         return;
     }
-    const token = authHeader.slice(7);
-    res.json({ valid: verifyToken(token) });
+    const valid = verifyToken(token);
+    if (!valid) {
+        clearSessionCookie(res);
+    }
+    res.json({ valid });
+});
+router.post('/logout', (_req, res) => {
+    setNoStore(res);
+    clearSessionCookie(res);
+    res.json({ success: true });
 });
 exports.default = router;

@@ -1,9 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
+const security_1 = require("../utils/security");
 const router = (0, express_1.Router)();
 const BRIDGE_URL = process.env.OPENCLAW_CRON_BRIDGE_URL || 'http://INTERNAL_IP:3011';
-const BRIDGE_TOKEN = process.env.OPENCLAW_CRON_BRIDGE_TOKEN || '';
+const BRIDGE_TOKEN = security_1.OPENCLAW_CRON_BRIDGE_TOKEN || '';
 function isNonEmptyString(value) {
     return typeof value === 'string' && value.trim().length > 0;
 }

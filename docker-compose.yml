@@ -11,7 +11,7 @@ services:
     container_name: terminal-claw-backend
     restart: unless-stopped
     ports:
-      - "3000:3000"  # 暴露端口供 OpenClaw 访问
+      - "127.0.0.1:3000:3000"  # 仅供宿主机上的 OpenClaw 访问
     env_file:
       - ./backend/.env
     environment:

@@ -3,16 +3,13 @@ import type { Category, Transaction, Account, Goal, Budget, OpenClawCronJob, Ope
 const API_BASE = '/api';
 
 function getAuthHeaders(): HeadersInit {
-  const token = localStorage.getItem('token');
   return {
     'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 }
 
 // 统一处理 401 响应
 function handleUnauthorized(): void {
-  localStorage.removeItem('token');
   // 只有不在登录页时才跳转
   if (window.location.pathname !== '/login') {
     window.location.href = '/login';
@@ -21,7 +18,10 @@ function handleUnauthorized(): void {
 
 // 封装 fetch，自动处理 401
 async function authFetch(url: string, options?: RequestInit): Promise<Response> {
-  const res = await fetch(url, options);
+  const res = await fetch(url, {
+    credentials: 'same-origin',
+    ...options,
+  });
   if (res.status === 401) {
     handleUnauthorized();
     throw new Error('未授权，请重新登录');
@@ -48,6 +48,8 @@ async function readErrorMessage(res: Response, fallback: string): Promise<string
 export async function login(password: string): Promise<{ success: boolean; token?: string; message?: string; locked?: boolean }> {
   const res = await fetch(`${API_BASE}/auth/login`, {
     method: 'POST',
+    credentials: 'same-origin',
+    cache: 'no-store',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ password }),
   });
@@ -58,12 +60,34 @@ export async function login(password: string): Promise<{ success: boolean; token
   return data;
 }
 
-export function logout(): void {
-  localStorage.removeItem('token');
+export async function logout(): Promise<void> {
+  try {
+    await fetch(`${API_BASE}/auth/logout`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch {
+    // 忽略退出阶段的网络错误，前端仍然会跳回登录页
+  }
 }
 
-export function isAuthenticated(): boolean {
-  return !!localStorage.getItem('token');
+export async function verifyAuth(): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_BASE}/auth/verify`, {
+      credentials: 'same-origin',
+      cache: 'no-store',
+    });
+    if (!res.ok) {
+      return false;
+    }
+
+    const data = await res.json();
+    return Boolean(data?.valid);
+  } catch {
+    return false;
+  }
 }
 
 // Transactions

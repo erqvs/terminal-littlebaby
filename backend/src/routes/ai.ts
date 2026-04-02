@@ -20,6 +20,7 @@ import {
   isDigestType,
   recordDigestHistory,
 } from '../utils/digestHistory';
+import { AI_API_KEY, timingSafeEqualString } from '../utils/security';
 
 const router = Router();
 const COURSE_TIME_SLOTS = [
@@ -169,16 +170,23 @@ function mapCourseInfo(course: ScheduleCourseRecord) {
 
 // AI API Key 认证中间件
 function aiAuthMiddleware(req: Request, res: Response, next: Function): void {
-  const apiKey = req.headers['x-api-key'] || req.query.apiKey;
-
-  const validApiKey = process.env.AI_API_KEY;
-
-  if (!validApiKey) {
+  if (!AI_API_KEY) {
     res.status(503).json({ error: 'AI_API_KEY 未配置' });
     return;
   }
 
-  if (apiKey !== validApiKey) {
+  if (typeof req.query.apiKey === 'string') {
+    res.status(400).json({ error: '请使用 X-API-Key 请求头，不要通过 query string 传递密钥' });
+    return;
+  }
+
+  const apiKey = req.header('x-api-key');
+  if (!apiKey) {
+    res.status(401).json({ error: '缺少 X-API-Key 请求头' });
+    return;
+  }
+
+  if (!timingSafeEqualString(apiKey, AI_API_KEY)) {
     res.status(401).json({ error: '无效的 API Key' });
     return;
   }
@@ -844,12 +852,15 @@ router.delete('/transaction/:id', aiAuthMiddleware, async (req: Request, res: Re
       const account = (accountRows as any[])[0];
 
       if (account) {
+        const transactionAmount = Number(transaction.amount);
         const reverseType = transaction.category_type === 'income' ? 'expense' : 'income';
         let newBalance: number;
         if (account.type === 'asset') {
-          newBalance = Number(account.balance) + (reverseType === 'income' ? transaction.amount : -transaction.amount);
+          newBalance =
+            Number(account.balance) + (reverseType === 'income' ? transactionAmount : -transactionAmount);
         } else {
-          newBalance = Number(account.balance) + (reverseType === 'expense' ? transaction.amount : -transaction.amount);
+          newBalance =
+            Number(account.balance) + (reverseType === 'expense' ? transactionAmount : -transactionAmount);
         }
         await connection.execute('UPDATE accounts SET balance = ? WHERE id = ?', [newBalance, transaction.account_id]);
       }

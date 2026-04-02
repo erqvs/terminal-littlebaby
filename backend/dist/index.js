@@ -36,9 +36,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+require("./bootstrap");
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
-const dotenv_1 = __importDefault(require("dotenv"));
 const transactions_1 = __importDefault(require("./routes/transactions"));
 const categories_1 = __importDefault(require("./routes/categories"));
 const accounts_1 = __importDefault(require("./routes/accounts"));
@@ -50,9 +50,12 @@ const schedule_1 = __importDefault(require("./routes/schedule"));
 const semester_1 = __importDefault(require("./routes/semester"));
 const auth_1 = __importStar(require("./routes/auth"));
 const ai_1 = __importDefault(require("./routes/ai"));
-dotenv_1.default.config();
+const security_1 = require("./utils/security");
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3000;
+(0, security_1.validateSecurityConfiguration)();
+app.disable('x-powered-by');
+app.set('trust proxy', 'loopback, linklocal, uniquelocal');
 // 允许的域名列表
 const allowedOrigins = [
     'https://terminal-claw.example.com:23333',
@@ -81,8 +84,11 @@ app.use((0, cors_1.default)({
 app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
-    res.setHeader('X-XSS-Protection', '1; mode=block');
-    res.removeHeader('X-Powered-By');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'; base-uri 'none'");
+    if (process.env.NODE_ENV === 'production') {
+        res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains');
+    }
     // 保存原始 json 方法
     const originalJson = res.json.bind(res);
     res.json = (body) => {

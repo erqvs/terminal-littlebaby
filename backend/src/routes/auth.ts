@@ -1,11 +1,10 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
+import { APP_PASSWORD, AUTH_COOKIE_NAME, JWT_SECRET, timingSafeEqualString } from '../utils/security';
 
 const router = Router();
-
-// 从环境变量获取密码，默认为 'admin123'
-const APP_PASSWORD = process.env.APP_PASSWORD || 'admin123';
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const TOKEN_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const COOKIE_SECURE = process.env.NODE_ENV === 'production';
 
 // 安全配置
 const MAX_ATTEMPTS = 5;           // 最大失败次数
@@ -85,20 +84,70 @@ function recordSuccess(ip: string): void {
 
 // 获取客户端IP
 function getClientIp(req: Request): string {
-  const forwarded = req.headers['x-forwarded-for'];
-  if (typeof forwarded === 'string') {
-    return forwarded.split(',')[0].trim();
+  return req.ip || req.socket.remoteAddress || 'unknown';
+}
+
+function parseCookieValue(req: Request, name: string): string | null {
+  const cookieHeader = req.headers.cookie;
+
+  if (!cookieHeader) {
+    return null;
   }
-  return req.socket.remoteAddress || 'unknown';
+
+  const cookies = cookieHeader.split(';');
+
+  for (const cookie of cookies) {
+    const [rawName, ...rawValueParts] = cookie.trim().split('=');
+    if (rawName !== name) {
+      continue;
+    }
+
+    const rawValue = rawValueParts.join('=');
+    return rawValue ? decodeURIComponent(rawValue) : null;
+  }
+
+  return null;
+}
+
+function readTokenFromRequest(req: Request): string | null {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.slice(7);
+  }
+
+  return parseCookieValue(req, AUTH_COOKIE_NAME);
+}
+
+function setNoStore(res: Response): void {
+  res.setHeader('Cache-Control', 'no-store');
+}
+
+function setSessionCookie(res: Response, token: string): void {
+  res.cookie(AUTH_COOKIE_NAME, token, {
+    httpOnly: true,
+    sameSite: 'strict',
+    secure: COOKIE_SECURE,
+    maxAge: TOKEN_MAX_AGE_MS,
+    path: '/',
+  });
+}
+
+function clearSessionCookie(res: Response): void {
+  res.clearCookie(AUTH_COOKIE_NAME, {
+    httpOnly: true,
+    sameSite: 'strict',
+    secure: COOKIE_SECURE,
+    path: '/',
+  });
 }
 
 // 生成简单 token
 function generateToken(): string {
   const payload = {
     iat: Date.now(),
-    exp: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 天过期
+    exp: Date.now() + TOKEN_MAX_AGE_MS,
   };
-  const data = Buffer.from(JSON.stringify(payload)).toString('base64');
+  const data = Buffer.from(JSON.stringify(payload)).toString('base64url');
   const signature = crypto
     .createHmac('sha256', JWT_SECRET)
     .update(data)
@@ -110,14 +159,18 @@ function generateToken(): string {
 export function verifyToken(token: string): boolean {
   try {
     const [data, signature] = token.split('.');
+    if (!data || !signature) {
+      return false;
+    }
+
     const expectedSignature = crypto
       .createHmac('sha256', JWT_SECRET)
       .update(data)
       .digest('hex');
     
-    if (signature !== expectedSignature) return false;
+    if (!timingSafeEqualString(signature, expectedSignature)) return false;
     
-    const payload = JSON.parse(Buffer.from(data, 'base64').toString());
+    const payload = JSON.parse(Buffer.from(data, 'base64url').toString());
     return payload.exp > Date.now();
   } catch {
     return false;
@@ -125,17 +178,16 @@ export function verifyToken(token: string): boolean {
 }
 
 // 认证中间件
-export function authMiddleware(req: Request, res: Response, next: Function): void {
-  const authHeader = req.headers.authorization;
-  
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
+  const token = readTokenFromRequest(req);
+
+  if (!token) {
     res.status(401).json({ error: '未授权访问' });
     return;
   }
-  
-  const token = authHeader.slice(7);
-  
+
   if (!verifyToken(token)) {
+    clearSessionCookie(res);
     res.status(401).json({ error: 'Token 无效或已过期' });
     return;
   }
@@ -145,6 +197,7 @@ export function authMiddleware(req: Request, res: Response, next: Function): voi
 
 // 登录接口
 router.post('/login', (req: Request, res: Response): void => {
+  setNoStore(res);
   const ip = getClientIp(req);
   
   // 检查是否被锁定
@@ -175,9 +228,10 @@ router.post('/login', (req: Request, res: Response): void => {
     return;
   }
   
-  if (password === APP_PASSWORD) {
+  if (timingSafeEqualString(password, APP_PASSWORD)) {
     recordSuccess(ip);
     const token = generateToken();
+    setSessionCookie(res, token);
     res.json({ success: true, token });
   } else {
     recordFailure(ip);
@@ -202,15 +256,26 @@ router.post('/login', (req: Request, res: Response): void => {
 
 // 验证 token 接口
 router.get('/verify', (req: Request, res: Response): void => {
-  const authHeader = req.headers.authorization;
-  
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  setNoStore(res);
+  const token = readTokenFromRequest(req);
+
+  if (!token) {
     res.json({ valid: false });
     return;
   }
-  
-  const token = authHeader.slice(7);
-  res.json({ valid: verifyToken(token) });
+
+  const valid = verifyToken(token);
+  if (!valid) {
+    clearSessionCookie(res);
+  }
+
+  res.json({ valid });
+});
+
+router.post('/logout', (_req: Request, res: Response): void => {
+  setNoStore(res);
+  clearSessionCookie(res);
+  res.json({ success: true });
 });
 
 export default router;
