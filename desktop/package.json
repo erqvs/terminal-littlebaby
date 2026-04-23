@@ -1,14 +1,14 @@
 {
-  "name": "terminal-claw-desktop",
-  "productName": "terminal-claw",
+  "name": "terminal-littlebaby-desktop",
+  "productName": "terminal-littlebaby",
   "version": "0.1.0",
-  "description": "Mac desktop shell for terminal-claw",
+  "description": "Mac desktop shell for terminal-littlebaby",
   "main": "main.js",
   "author": "your-org",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/your-org/terminal-claw.git"
+    "url": "git+https://github.com/your-org/terminal-littlebaby.git"
   },
   "scripts": {
     "start": "electron-forge start",

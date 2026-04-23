@@ -1,24 +1,24 @@
 services:
   frontend:
     build: ./frontend
-    container_name: terminal-claw-frontend
+    container_name: terminal-littlebaby-frontend
     restart: unless-stopped
     networks:
       - proxy-network
 
   backend:
     build: ./backend
-    container_name: terminal-claw-backend
+    container_name: terminal-littlebaby-backend
     restart: unless-stopped
     ports:
-      - "127.0.0.1:3000:3000"  # 仅供宿主机上的 OpenClaw 访问
+      - "127.0.0.1:3000:3000"
     env_file:
       - ./backend/.env
     environment:
       - NODE_ENV=production
       - TZ=Asia/Shanghai
     volumes:
-      - /home/openclaw-custom/.openclaw:/root/.openclaw:ro
+      - /home/openclaw-custom/.littlebaby:/root/.littlebaby:ro
     networks:
       - proxy-network
     depends_on: []

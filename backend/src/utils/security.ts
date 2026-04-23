@@ -61,7 +61,7 @@ export const AUTH_COOKIE_NAME = 'tc_session';
 export const APP_PASSWORD = getSecret('APP_PASSWORD', { minLength: 16 })!;
 export const JWT_SECRET = getSecret('JWT_SECRET', { minLength: 32 })!;
 export const AI_API_KEY = getSecret('AI_API_KEY', { minLength: 32, optional: true });
-export const OPENCLAW_CRON_BRIDGE_TOKEN = getSecret('OPENCLAW_CRON_BRIDGE_TOKEN', { minLength: 32, optional: true });
+export const LITTLEBABY_CRON_BRIDGE_TOKEN = getSecret('LITTLEBABY_CRON_BRIDGE_TOKEN', { minLength: 32, optional: true });
 
 export function validateSecurityConfiguration() {
   const dbPassword = readEnv('DB_PASSWORD');
@@ -74,7 +74,7 @@ export function validateSecurityConfiguration() {
     ['APP_PASSWORD', APP_PASSWORD],
     ['JWT_SECRET', JWT_SECRET],
     ['AI_API_KEY', AI_API_KEY],
-    ['OPENCLAW_CRON_BRIDGE_TOKEN', OPENCLAW_CRON_BRIDGE_TOKEN],
+    ['LITTLEBABY_CRON_BRIDGE_TOKEN', LITTLEBABY_CRON_BRIDGE_TOKEN],
   ].filter((entry): entry is [string, string] => Boolean(entry[1]));
 
   for (let i = 0; i < uniqueSecrets.length; i++) {

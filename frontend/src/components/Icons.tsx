@@ -13,13 +13,6 @@ export const DashboardIcon = ({ style, className }: IconProps) => (
   </svg>
 );
 
-export const PersonalIcon = ({ style, className }: IconProps) => (
-  <svg style={{ width: 16, height: 16, ...style }} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M20 21a8 8 0 0 0-16 0" />
-    <circle cx="12" cy="8" r="4" />
-  </svg>
-);
-
 export const TransactionIcon = ({ style, className }: IconProps) => (
   <svg style={{ width: 16, height: 16, ...style }} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="12" y1="1" x2="12" y2="23" />
@@ -136,13 +129,6 @@ export const ScheduleIcon = ({ style, className }: IconProps) => (
     <line x1="8" y1="14" x2="8" y2="14.01" />
     <line x1="12" y1="14" x2="12" y2="14.01" />
     <line x1="16" y1="14" x2="16" y2="14.01" />
-  </svg>
-);
-
-export const TaskIcon = ({ style, className }: IconProps) => (
-  <svg style={{ width: 16, height: 16, ...style }} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M9 11l3 3L22 4" />
-    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
   </svg>
 );
 

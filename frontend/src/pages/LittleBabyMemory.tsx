@@ -22,30 +22,30 @@ import {
   ClockIcon,
 } from '../components/Icons';
 import {
-  getOpenClawMemoryStatus,
-  getOpenClawMemoryFiles,
-  searchOpenClawMemory,
-  reindexOpenClawMemory,
-  createOpenClawMemoryFile,
-  deleteOpenClawMemoryFile,
+  getLittleBabyMemoryStatus,
+  getLittleBabyMemoryFiles,
+  searchLittleBabyMemory,
+  reindexLittleBabyMemory,
+  createLittleBabyMemoryFile,
+  deleteLittleBabyMemoryFile,
 } from '../services/api';
 import type {
-  OpenClawMemoryAgentStatus,
-  OpenClawMemoryFile,
-  OpenClawMemorySearchResult,
+  LittleBabyMemoryAgentStatus,
+  LittleBabyMemoryFile,
+  LittleBabyMemorySearchResult,
 } from '../types';
 
 const { TextArea } = Input;
 const { Text, Paragraph } = Typography;
 
-export default function OpenClawMemory() {
-  const [status, setStatus] = useState<OpenClawMemoryAgentStatus[] | null>(null);
-  const [files, setFiles] = useState<OpenClawMemoryFile[]>([]);
+export default function LittleBabyMemory() {
+  const [status, setStatus] = useState<LittleBabyMemoryAgentStatus[] | null>(null);
+  const [files, setFiles] = useState<LittleBabyMemoryFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<OpenClawMemorySearchResult[]>([]);
+  const [searchResults, setSearchResults] = useState<LittleBabyMemorySearchResult[]>([]);
   const [searching, setSearching] = useState(false);
-  const [viewingFile, setViewingFile] = useState<OpenClawMemoryFile | null>(null);
+  const [viewingFile, setViewingFile] = useState<LittleBabyMemoryFile | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createForm] = Form.useForm();
@@ -55,8 +55,8 @@ export default function OpenClawMemory() {
     setLoading(true);
     try {
       const [statusRes, filesRes] = await Promise.all([
-        getOpenClawMemoryStatus(),
-        getOpenClawMemoryFiles(),
+        getLittleBabyMemoryStatus(),
+        getLittleBabyMemoryFiles(),
       ]);
       setStatus(statusRes.agents || []);
       setFiles(filesRes.files || []);
@@ -75,7 +75,7 @@ export default function OpenClawMemory() {
     if (!searchQuery.trim()) return;
     setSearching(true);
     try {
-      const res = await searchOpenClawMemory(searchQuery.trim());
+      const res = await searchLittleBabyMemory(searchQuery.trim());
       setSearchResults(res.results || []);
     } catch {
       message.error('搜索失败');
@@ -88,7 +88,7 @@ export default function OpenClawMemory() {
   const handleReindex = useCallback(async () => {
     setReindexing(true);
     try {
-      await reindexOpenClawMemory();
+      await reindexLittleBabyMemory();
       message.success('重新索引完成');
       void fetchData();
     } catch {
@@ -103,7 +103,7 @@ export default function OpenClawMemory() {
       try {
         const fileName = values.name.endsWith('.md') ? values.name : `${values.name}.md`;
         const filePath = fileName.includes('/') ? fileName : `memory/${fileName}`;
-        await createOpenClawMemoryFile(filePath, values.content);
+        await createLittleBabyMemoryFile(filePath, values.content);
         message.success('文件已创建');
         setCreateModalOpen(false);
         createForm.resetFields();
@@ -118,7 +118,7 @@ export default function OpenClawMemory() {
   const handleDeleteFile = useCallback(
     async (filePath: string) => {
       try {
-        await deleteOpenClawMemoryFile(filePath);
+        await deleteLittleBabyMemoryFile(filePath);
         message.success('文件已删除');
         void fetchData();
       } catch {
@@ -128,7 +128,7 @@ export default function OpenClawMemory() {
     [fetchData],
   );
 
-  const openFileDrawer = useCallback((file: OpenClawMemoryFile) => {
+  const openFileDrawer = useCallback((file: LittleBabyMemoryFile) => {
     setViewingFile(file);
     setDrawerOpen(true);
   }, []);
@@ -145,7 +145,7 @@ export default function OpenClawMemory() {
       title: '文件名',
       dataIndex: 'name',
       key: 'name',
-      render: (name: string, record: OpenClawMemoryFile) => (
+      render: (name: string, record: LittleBabyMemoryFile) => (
         <a onClick={() => openFileDrawer(record)} style={{ color: '#1890ff' }}>
           {name}
         </a>
@@ -181,7 +181,7 @@ export default function OpenClawMemory() {
       title: '操作',
       key: 'action',
       width: 120,
-      render: (_: unknown, record: OpenClawMemoryFile) => (
+      render: (_: unknown, record: LittleBabyMemoryFile) => (
         <Space>
           <Button type="link" size="small" onClick={() => openFileDrawer(record)}>
             查看
@@ -247,7 +247,7 @@ export default function OpenClawMemory() {
       dataIndex: 'start_line',
       key: 'lines',
       width: 100,
-      render: (_: unknown, record: OpenClawMemorySearchResult) => {
+      render: (_: unknown, record: LittleBabyMemorySearchResult) => {
         if (!record.start_line) return '-';
         return record.end_line && record.end_line !== record.start_line
           ? `${record.start_line}-${record.end_line}`
@@ -267,7 +267,7 @@ export default function OpenClawMemory() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <h2 style={{ margin: 0 }}>OpenClaw 记忆</h2>
+        <h2 style={{ margin: 0 }}>LittleBaby 记忆</h2>
         <Space>
           <Button
             onClick={handleReindex}

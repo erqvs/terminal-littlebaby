@@ -88,7 +88,7 @@ export default function Login() {
               margin: 0,
             }}
           >
-            terminal-claw
+            terminal-littlebaby
           </h1>
           <p
             style={{

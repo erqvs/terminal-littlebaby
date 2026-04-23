@@ -7,21 +7,21 @@ import os from 'os';
 
 const router = Router();
 
-const OPENCLAW_HOME = process.env.OPENCLAW_HOME || path.join(os.homedir(), '.openclaw');
-const WORKSPACE_DIR = path.join(OPENCLAW_HOME, 'workspace');
+const LITTLEBABY_HOME = process.env.LITTLEBABY_HOME || path.join(os.homedir(), '.littlebaby');
+const WORKSPACE_DIR = path.join(LITTLEBABY_HOME, 'workspace');
 const MEMORY_DIR = path.join(WORKSPACE_DIR, 'memory');
 
-function hasOpenClaw(): boolean {
+function hasLittleBaby(): boolean {
   try {
-    execSync('which openclaw', { encoding: 'utf-8', timeout: 5000 });
+    execSync('which littlebaby', { encoding: 'utf-8', timeout: 5000 });
     return true;
   } catch {
     return false;
   }
 }
 
-function runOpenClaw(args: string): string {
-  const result = execSync(`openclaw ${args}`, {
+function runLittleBaby(args: string): string {
+  const result = execSync(`littlebaby ${args}`, {
     encoding: 'utf-8',
     timeout: 30000,
     env: { ...process.env, HOME: os.homedir() },
@@ -117,7 +117,7 @@ function buildFilesystemStatus() {
 
   let dbExists = false;
   let dbPath = '';
-  const agentDbPath = path.join(OPENCLAW_HOME, 'memory', 'main.sqlite');
+  const agentDbPath = path.join(LITTLEBABY_HOME, 'memory', 'main.sqlite');
   if (fs.existsSync(agentDbPath)) {
     dbExists = true;
     dbPath = agentDbPath;
@@ -133,13 +133,13 @@ function buildFilesystemStatus() {
           chunks: 0,
           dirty: true,
           workspaceDir: WORKSPACE_DIR,
-          dbPath: dbPath || path.join(OPENCLAW_HOME, 'memory', 'main.sqlite'),
+          dbPath: dbPath || path.join(LITTLEBABY_HOME, 'memory', 'main.sqlite'),
           sources: ['memory'],
           custom: { searchMode: dbExists ? 'hybrid' : 'file-search' },
         },
         scan: {
           totalFiles: files.length,
-          issues: !fs.existsSync(MEMORY_DIR) ? ['memory directory missing (~/.openclaw/workspace/memory)'] : [],
+          issues: !fs.existsSync(MEMORY_DIR) ? ['memory directory missing (~/.littlebaby/workspace/memory)'] : [],
           files: files.map((f) => ({ name: f.name, path: f.path, size: f.size })),
           totalSize,
         },
@@ -150,9 +150,9 @@ function buildFilesystemStatus() {
 
 router.get('/status', async (_req: Request, res: Response) => {
   try {
-    if (hasOpenClaw()) {
+    if (hasLittleBaby()) {
       try {
-        const raw = runOpenClaw('memory status --json --deep');
+        const raw = runLittleBaby('memory status --json --deep');
         const agents = JSON.parse(raw);
         res.json({ agents });
         return;
@@ -160,7 +160,7 @@ router.get('/status', async (_req: Request, res: Response) => {
     }
     res.json(buildFilesystemStatus());
   } catch (error: any) {
-    console.error('Error fetching openclaw memory status:', error.message);
+    console.error('Error fetching littlebaby memory status:', error.message);
     res.status(500).json({ error: '获取记忆状态失败' });
   }
 });
@@ -215,9 +215,9 @@ router.get('/search', async (req: Request, res: Response) => {
       100,
     );
 
-    if (hasOpenClaw()) {
+    if (hasLittleBaby()) {
       try {
-        const raw = runOpenClaw(
+        const raw = runLittleBaby(
           `memory search ${JSON.stringify(query)} --json --max-results ${maxResults}`,
         );
         let parsed: any;
@@ -242,12 +242,12 @@ router.get('/search', async (req: Request, res: Response) => {
 
 router.post('/reindex', async (_req: Request, res: Response) => {
   try {
-    if (hasOpenClaw()) {
-      const raw = runOpenClaw('memory index --force');
+    if (hasLittleBaby()) {
+      const raw = runLittleBaby('memory index --force');
       res.json({ success: true, output: raw.trim() });
       return;
     }
-    res.json({ success: true, output: 'openclaw not available, skipped indexing' });
+    res.json({ success: true, output: 'littlebaby not available, skipped indexing' });
   } catch (error: any) {
     console.error('Error reindexing memory:', error.message);
     res.status(500).json({ error: '重新索引失败' });

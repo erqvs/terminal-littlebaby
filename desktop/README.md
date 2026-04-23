@@ -1,10 +1,10 @@
-# terminal-claw desktop
+# terminal-littlebaby desktop
 
-Electron desktop shell for the hosted `terminal-claw` web app.
+Electron desktop shell for the hosted `terminal-littlebaby` web app.
 
 ## What it does
 
-- Loads the hosted app at `https://terminal-claw.example.com:23333`
+- Loads the hosted app at `https://terminal-littlebaby.example.com:23333`
 - Packages as a macOS desktop app
 - Uses `update-electron-app` to check for updates from GitHub Releases
 
@@ -19,7 +19,7 @@ npm start
 To point the shell at a different environment:
 
 ```bash
-TERMINAL_CLAW_APP_URL=http://localhost:5173 npm start
+TERMINAL_LITTLEBABY_APP_URL=http://localhost:5173 npm start
 ```
 
 ## Packaging
@@ -31,7 +31,7 @@ npm run package
 
 ## Publishing
 
-`npm run publish` uses Electron Forge's GitHub publisher and uploads artifacts to the `your-org/terminal-claw` releases page.
+`npm run publish` uses Electron Forge's GitHub publisher and uploads artifacts to the `your-org/terminal-littlebaby` releases page.
 
 The repository is public, so packaged apps can use `update.electronjs.org` through `update-electron-app`.
 

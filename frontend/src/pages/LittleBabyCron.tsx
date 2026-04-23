@@ -1,18 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Col, Drawer, Empty, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Spin, Switch, Table, Tag, Typography, message } from 'antd';
 import dayjs from 'dayjs';
-import type { OpenClawCronJob, OpenClawCronRuns, OpenClawCronStatus } from '../types';
+import type { LittleBabyCronJob, LittleBabyCronRuns, LittleBabyCronStatus } from '../types';
 import { PlusIcon } from '../components/Icons';
 import {
-  createOpenClawCronJob,
-  deleteOpenClawCronJob,
-  disableOpenClawCronJob,
-  enableOpenClawCronJob,
-  getOpenClawCronJobs,
-  getOpenClawCronRuns,
-  getOpenClawCronStatus,
-  runOpenClawCronJob,
-  updateOpenClawCronJob,
+  createLittleBabyCronJob,
+  deleteLittleBabyCronJob,
+  disableLittleBabyCronJob,
+  enableLittleBabyCronJob,
+  getLittleBabyCronJobs,
+  getLittleBabyCronRuns,
+  getLittleBabyCronStatus,
+  runLittleBabyCronJob,
+  updateLittleBabyCronJob,
 } from '../services/api';
 
 const WEEKDAY_OPTIONS = [
@@ -138,7 +138,7 @@ function parseCronSchedule(cron: string) {
   return null;
 }
 
-function formatSchedule(job: OpenClawCronJob) {
+function formatSchedule(job: LittleBabyCronJob) {
   if (job.schedule.kind === 'every') {
     return formatEveryLabel(job.schedule.everyMs);
   }
@@ -161,7 +161,7 @@ function formatSchedule(job: OpenClawCronJob) {
   return '-';
 }
 
-function inferScheduleFormValues(job: OpenClawCronJob) {
+function inferScheduleFormValues(job: LittleBabyCronJob) {
   const tz = job.schedule.tz || 'Asia/Shanghai';
 
   if (job.schedule.kind === 'every') {
@@ -265,15 +265,15 @@ function getScheduleModeHint(mode: string) {
   return '适合复杂规则，格式是 分 时 日 月 周，例如 0 9 * * * 表示每天 09:00。';
 }
 
-export default function OpenClawCron() {
-  const [status, setStatus] = useState<OpenClawCronStatus | null>(null);
-  const [jobs, setJobs] = useState<OpenClawCronJob[]>([]);
+export default function LittleBabyCron() {
+  const [status, setStatus] = useState<LittleBabyCronStatus | null>(null);
+  const [jobs, setJobs] = useState<LittleBabyCronJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
-  const [editingJob, setEditingJob] = useState<OpenClawCronJob | null>(null);
+  const [editingJob, setEditingJob] = useState<LittleBabyCronJob | null>(null);
   const [runsVisible, setRunsVisible] = useState(false);
   const [runsLoading, setRunsLoading] = useState(false);
-  const [runs, setRuns] = useState<OpenClawCronRuns['entries']>([]);
+  const [runs, setRuns] = useState<LittleBabyCronRuns['entries']>([]);
   const [selectedJobName, setSelectedJobName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm();
@@ -303,13 +303,13 @@ export default function OpenClawCron() {
     try {
       setLoading(true);
       const [statusData, jobsData] = await Promise.all([
-        getOpenClawCronStatus(),
-        getOpenClawCronJobs(),
+        getLittleBabyCronStatus(),
+        getLittleBabyCronJobs(),
       ]);
       setStatus(statusData);
       setJobs(jobsData.jobs || []);
     } catch (error: any) {
-      message.error(error.message || '加载 OpenClaw 定时任务失败');
+      message.error(error.message || '加载 LittleBaby 定时任务失败');
     } finally {
       setLoading(false);
     }
@@ -335,7 +335,7 @@ export default function OpenClawCron() {
     setModalVisible(true);
   };
 
-  const openEditModal = (job: OpenClawCronJob) => {
+  const openEditModal = (job: LittleBabyCronJob) => {
     setEditingJob(job);
     form.setFieldsValue({
       name: job.name,
@@ -401,10 +401,10 @@ export default function OpenClawCron() {
     try {
       setSubmitting(true);
       if (editingJob) {
-        await updateOpenClawCronJob(editingJob.id, payload);
+        await updateLittleBabyCronJob(editingJob.id, payload);
         message.success('定时任务已更新');
       } else {
-        await createOpenClawCronJob(payload);
+        await createLittleBabyCronJob(payload);
         message.success('定时任务已创建');
       }
       setModalVisible(false);
@@ -418,12 +418,12 @@ export default function OpenClawCron() {
     }
   };
 
-  const handleToggle = async (job: OpenClawCronJob, enabled: boolean) => {
+  const handleToggle = async (job: LittleBabyCronJob, enabled: boolean) => {
     try {
       if (enabled) {
-        await enableOpenClawCronJob(job.id);
+        await enableLittleBabyCronJob(job.id);
       } else {
-        await disableOpenClawCronJob(job.id);
+        await disableLittleBabyCronJob(job.id);
       }
       message.success(enabled ? '任务已启用' : '任务已停用');
       fetchData();
@@ -432,18 +432,18 @@ export default function OpenClawCron() {
     }
   };
 
-  const handleRun = async (job: OpenClawCronJob) => {
+  const handleRun = async (job: LittleBabyCronJob) => {
     try {
-      await runOpenClawCronJob(job.id);
+      await runLittleBabyCronJob(job.id);
       message.success('任务已提交执行');
     } catch (error: any) {
       message.error(error.message || '执行任务失败');
     }
   };
 
-  const handleDelete = async (job: OpenClawCronJob) => {
+  const handleDelete = async (job: LittleBabyCronJob) => {
     try {
-      await deleteOpenClawCronJob(job.id);
+      await deleteLittleBabyCronJob(job.id);
       message.success('任务已删除');
       fetchData();
     } catch (error: any) {
@@ -451,12 +451,12 @@ export default function OpenClawCron() {
     }
   };
 
-  const handleOpenRuns = async (job: OpenClawCronJob) => {
+  const handleOpenRuns = async (job: LittleBabyCronJob) => {
     try {
       setRunsVisible(true);
       setRunsLoading(true);
       setSelectedJobName(job.name);
-      const data = await getOpenClawCronRuns(job.id);
+      const data = await getLittleBabyCronRuns(job.id);
       setRuns(data.entries || []);
     } catch (error: any) {
       message.error(error.message || '加载运行记录失败');
@@ -470,7 +470,7 @@ export default function OpenClawCron() {
       title: '任务',
       dataIndex: 'name',
       key: 'name',
-      render: (_: unknown, record: OpenClawCronJob) => (
+      render: (_: unknown, record: LittleBabyCronJob) => (
         <div>
           <div style={{ fontWeight: 600 }}>{record.name}</div>
           <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12 }}>
@@ -482,7 +482,7 @@ export default function OpenClawCron() {
     {
       title: '调度',
       key: 'schedule',
-      render: (_: unknown, record: OpenClawCronJob) => (
+      render: (_: unknown, record: LittleBabyCronJob) => (
         <div>
           <div>{formatSchedule(record)}</div>
           <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12 }}>
@@ -495,7 +495,7 @@ export default function OpenClawCron() {
       title: '内容',
       dataIndex: 'payload',
       key: 'payload',
-      render: (payload: OpenClawCronJob['payload']) => (
+      render: (payload: LittleBabyCronJob['payload']) => (
         <Typography.Paragraph
           ellipsis={{ rows: 2, expandable: false }}
           style={{ marginBottom: 0, maxWidth: 320 }}
@@ -508,7 +508,7 @@ export default function OpenClawCron() {
       title: '状态',
       key: 'enabled',
       width: 120,
-      render: (_: unknown, record: OpenClawCronJob) => (
+      render: (_: unknown, record: LittleBabyCronJob) => (
         <Switch checked={record.enabled} onChange={(checked) => handleToggle(record, checked)} />
       ),
     },
@@ -516,7 +516,7 @@ export default function OpenClawCron() {
       title: '操作',
       key: 'actions',
       width: 240,
-      render: (_: unknown, record: OpenClawCronJob) => (
+      render: (_: unknown, record: LittleBabyCronJob) => (
         <Space size={12} wrap>
           <Button size="small" onClick={() => handleRun(record)}>立即运行</Button>
           <Button size="small" onClick={() => openEditModal(record)}>编辑</Button>
@@ -535,7 +535,7 @@ export default function OpenClawCron() {
         <div>
           <h2 style={{ margin: 0 }}>定时任务</h2>
           <div style={{ color: 'rgba(255,255,255,0.45)', marginTop: 6 }}>
-            当前管理 OpenClaw {status?.target || 'custom'} 实例的 cron 任务。
+            当前管理 LittleBaby {status?.target || 'custom'} 实例的 cron 任务。
           </div>
         </div>
         <Button type="primary" onClick={openCreateModal}>
@@ -579,7 +579,7 @@ export default function OpenClawCron() {
         {jobs.length === 0 && !loading ? (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="还没有任何 OpenClaw 定时任务"
+            description="还没有任何 LittleBaby 定时任务"
           >
             <Button type="primary" onClick={openCreateModal}>创建第一条任务</Button>
           </Empty>
@@ -721,7 +721,7 @@ export default function OpenClawCron() {
 
               {!announce && (
                 <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12, marginTop: -8, marginBottom: 16 }}>
-                  默认只在 OpenClaw 内部执行，不主动往聊天渠道发总结。
+                  默认只在 LittleBaby 内部执行，不主动往聊天渠道发总结。
                 </div>
               )}
             </>

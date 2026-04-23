@@ -1,4 +1,4 @@
-import type { Category, Transaction, Account, Goal, Budget, OpenClawCronJob, OpenClawCronRuns, OpenClawCronStatus, DigestHistoryListResponse } from '../types';
+import type { Category, Transaction, Account, Goal, Budget, LittleBabyCronJob, LittleBabyCronRuns, LittleBabyCronStatus, DigestHistoryListResponse } from '../types';
 
 const API_BASE = '/api';
 
@@ -406,103 +406,103 @@ export async function deleteBudget(id: number): Promise<void> {
   }
 }
 
-// OpenClaw Cron
-export async function getOpenClawCronStatus(): Promise<OpenClawCronStatus> {
-  const res = await authFetch(`${API_BASE}/openclaw-cron/status`, {
+// LittleBaby Cron
+export async function getLittleBabyCronStatus(): Promise<LittleBabyCronStatus> {
+  const res = await authFetch(`${API_BASE}/littlebaby-cron/status`, {
     headers: getAuthHeaders(),
   });
   if (!res.ok) {
-    throw new Error(await readErrorMessage(res, '加载 OpenClaw 定时任务状态失败'));
+    throw new Error(await readErrorMessage(res, '加载 LittleBaby 定时任务状态失败'));
   }
   return res.json();
 }
 
-export async function getOpenClawCronJobs(): Promise<{ jobs: OpenClawCronJob[]; target?: string }> {
-  const res = await authFetch(`${API_BASE}/openclaw-cron/jobs?all=true`, {
+export async function getLittleBabyCronJobs(): Promise<{ jobs: LittleBabyCronJob[]; target?: string }> {
+  const res = await authFetch(`${API_BASE}/littlebaby-cron/jobs?all=true`, {
     headers: getAuthHeaders(),
   });
   if (!res.ok) {
-    throw new Error(await readErrorMessage(res, '加载 OpenClaw 定时任务失败'));
+    throw new Error(await readErrorMessage(res, '加载 LittleBaby 定时任务失败'));
   }
   return res.json();
 }
 
-export async function createOpenClawCronJob(data: Record<string, unknown>): Promise<OpenClawCronJob> {
-  const res = await authFetch(`${API_BASE}/openclaw-cron/jobs`, {
+export async function createLittleBabyCronJob(data: Record<string, unknown>): Promise<LittleBabyCronJob> {
+  const res = await authFetch(`${API_BASE}/littlebaby-cron/jobs`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
   });
   if (!res.ok) {
-    throw new Error(await readErrorMessage(res, '创建 OpenClaw 定时任务失败'));
+    throw new Error(await readErrorMessage(res, '创建 LittleBaby 定时任务失败'));
   }
   return res.json();
 }
 
-export async function updateOpenClawCronJob(id: string, data: Record<string, unknown>): Promise<OpenClawCronJob> {
-  const res = await authFetch(`${API_BASE}/openclaw-cron/jobs/${id}`, {
+export async function updateLittleBabyCronJob(id: string, data: Record<string, unknown>): Promise<LittleBabyCronJob> {
+  const res = await authFetch(`${API_BASE}/littlebaby-cron/jobs/${id}`, {
     method: 'PATCH',
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
   });
   if (!res.ok) {
-    throw new Error(await readErrorMessage(res, '更新 OpenClaw 定时任务失败'));
+    throw new Error(await readErrorMessage(res, '更新 LittleBaby 定时任务失败'));
   }
   return res.json();
 }
 
-export async function enableOpenClawCronJob(id: string): Promise<OpenClawCronJob> {
-  const res = await authFetch(`${API_BASE}/openclaw-cron/jobs/${id}/enable`, {
+export async function enableLittleBabyCronJob(id: string): Promise<LittleBabyCronJob> {
+  const res = await authFetch(`${API_BASE}/littlebaby-cron/jobs/${id}/enable`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({}),
   });
   if (!res.ok) {
-    throw new Error(await readErrorMessage(res, '启用 OpenClaw 定时任务失败'));
+    throw new Error(await readErrorMessage(res, '启用 LittleBaby 定时任务失败'));
   }
   return res.json();
 }
 
-export async function disableOpenClawCronJob(id: string): Promise<OpenClawCronJob> {
-  const res = await authFetch(`${API_BASE}/openclaw-cron/jobs/${id}/disable`, {
+export async function disableLittleBabyCronJob(id: string): Promise<LittleBabyCronJob> {
+  const res = await authFetch(`${API_BASE}/littlebaby-cron/jobs/${id}/disable`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({}),
   });
   if (!res.ok) {
-    throw new Error(await readErrorMessage(res, '停用 OpenClaw 定时任务失败'));
+    throw new Error(await readErrorMessage(res, '停用 LittleBaby 定时任务失败'));
   }
   return res.json();
 }
 
-export async function runOpenClawCronJob(id: string): Promise<{ ok: boolean; output?: string }> {
-  const res = await authFetch(`${API_BASE}/openclaw-cron/jobs/${id}/run`, {
+export async function runLittleBabyCronJob(id: string): Promise<{ ok: boolean; output?: string }> {
+  const res = await authFetch(`${API_BASE}/littlebaby-cron/jobs/${id}/run`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({}),
   });
   if (!res.ok) {
-    throw new Error(await readErrorMessage(res, '执行 OpenClaw 定时任务失败'));
+    throw new Error(await readErrorMessage(res, '执行 LittleBaby 定时任务失败'));
   }
   return res.json();
 }
 
-export async function deleteOpenClawCronJob(id: string): Promise<void> {
-  const res = await authFetch(`${API_BASE}/openclaw-cron/jobs/${id}`, {
+export async function deleteLittleBabyCronJob(id: string): Promise<void> {
+  const res = await authFetch(`${API_BASE}/littlebaby-cron/jobs/${id}`, {
     method: 'DELETE',
     headers: getAuthHeaders(),
   });
   if (!res.ok) {
-    throw new Error(await readErrorMessage(res, '删除 OpenClaw 定时任务失败'));
+    throw new Error(await readErrorMessage(res, '删除 LittleBaby 定时任务失败'));
   }
 }
 
-export async function getOpenClawCronRuns(id: string): Promise<OpenClawCronRuns> {
-  const res = await authFetch(`${API_BASE}/openclaw-cron/jobs/${id}/runs?limit=20`, {
+export async function getLittleBabyCronRuns(id: string): Promise<LittleBabyCronRuns> {
+  const res = await authFetch(`${API_BASE}/littlebaby-cron/jobs/${id}/runs?limit=20`, {
     headers: getAuthHeaders(),
   });
   if (!res.ok) {
-    throw new Error(await readErrorMessage(res, '加载 OpenClaw 定时任务运行记录失败'));
+    throw new Error(await readErrorMessage(res, '加载 LittleBaby 定时任务运行记录失败'));
   }
   return res.json();
 }
@@ -704,36 +704,36 @@ export async function updateTimeSlots(owner: string, slots: { slot_number: numbe
   return res.json();
 }
 
-// OpenClaw Memory
-export async function getOpenClawMemoryStatus(): Promise<{ agents: any[] }> {
-  const res = await authFetch(`${API_BASE}/openclaw-memory/status`, {
+// LittleBaby Memory
+export async function getLittleBabyMemoryStatus(): Promise<{ agents: any[] }> {
+  const res = await authFetch(`${API_BASE}/littlebaby-memory/status`, {
     headers: getAuthHeaders(),
   });
   if (!res.ok) throw new Error(await readErrorMessage(res, '获取记忆状态失败'));
   return res.json();
 }
 
-export async function getOpenClawMemoryFiles(): Promise<{ files: any[] }> {
-  const res = await authFetch(`${API_BASE}/openclaw-memory/files`, {
+export async function getLittleBabyMemoryFiles(): Promise<{ files: any[] }> {
+  const res = await authFetch(`${API_BASE}/littlebaby-memory/files`, {
     headers: getAuthHeaders(),
   });
   if (!res.ok) throw new Error(await readErrorMessage(res, '获取记忆文件失败'));
   return res.json();
 }
 
-export async function searchOpenClawMemory(query: string, limit?: number): Promise<{ results: any[]; query: string }> {
+export async function searchLittleBabyMemory(query: string, limit?: number): Promise<{ results: any[]; query: string }> {
   const params = new URLSearchParams();
   params.set('q', query);
   if (limit) params.set('limit', String(limit));
-  const res = await authFetch(`${API_BASE}/openclaw-memory/search?${params.toString()}`, {
+  const res = await authFetch(`${API_BASE}/littlebaby-memory/search?${params.toString()}`, {
     headers: getAuthHeaders(),
   });
   if (!res.ok) throw new Error(await readErrorMessage(res, '搜索记忆失败'));
   return res.json();
 }
 
-export async function reindexOpenClawMemory(): Promise<{ success: boolean }> {
-  const res = await authFetch(`${API_BASE}/openclaw-memory/reindex`, {
+export async function reindexLittleBabyMemory(): Promise<{ success: boolean }> {
+  const res = await authFetch(`${API_BASE}/littlebaby-memory/reindex`, {
     method: 'POST',
     headers: getAuthHeaders(),
   });
@@ -741,8 +741,8 @@ export async function reindexOpenClawMemory(): Promise<{ success: boolean }> {
   return res.json();
 }
 
-export async function createOpenClawMemoryFile(name: string, content: string): Promise<{ success: boolean }> {
-  const res = await authFetch(`${API_BASE}/openclaw-memory/files`, {
+export async function createLittleBabyMemoryFile(name: string, content: string): Promise<{ success: boolean }> {
+  const res = await authFetch(`${API_BASE}/littlebaby-memory/files`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({ name, content }),
@@ -751,8 +751,8 @@ export async function createOpenClawMemoryFile(name: string, content: string): P
   return res.json();
 }
 
-export async function deleteOpenClawMemoryFile(name: string): Promise<{ success: boolean }> {
-  const res = await authFetch(`${API_BASE}/openclaw-memory/files/${encodeURIComponent(name)}`, {
+export async function deleteLittleBabyMemoryFile(name: string): Promise<{ success: boolean }> {
+  const res = await authFetch(`${API_BASE}/littlebaby-memory/files/${encodeURIComponent(name)}`, {
     method: 'DELETE',
     headers: getAuthHeaders(),
   });

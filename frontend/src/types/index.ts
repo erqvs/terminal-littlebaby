@@ -69,7 +69,7 @@ export interface Budget {
   member_count?: number;
 }
 
-export interface OpenClawCronJob {
+export interface LittleBabyCronJob {
   id: string;
   name: string;
   enabled: boolean;
@@ -100,7 +100,7 @@ export interface OpenClawCronJob {
   };
 }
 
-export interface OpenClawCronStatus {
+export interface LittleBabyCronStatus {
   enabled: boolean;
   storePath: string;
   jobs: number;
@@ -108,7 +108,7 @@ export interface OpenClawCronStatus {
   target: string;
 }
 
-export interface OpenClawCronRuns {
+export interface LittleBabyCronRuns {
   entries: Array<{
     runId?: string;
     startedAtMs?: number;
@@ -170,7 +170,7 @@ export interface Transaction {
   date: string;
 }
 
-export interface OpenClawMemoryFile {
+export interface LittleBabyMemoryFile {
   name: string;
   path: string;
   size: number;
@@ -178,7 +178,7 @@ export interface OpenClawMemoryFile {
   content?: string;
 }
 
-export interface OpenClawMemorySearchResult {
+export interface LittleBabyMemorySearchResult {
   path: string;
   text: string;
   score?: number;
@@ -188,7 +188,7 @@ export interface OpenClawMemorySearchResult {
   snippet?: string;
 }
 
-export interface OpenClawMemoryAgentStatus {
+export interface LittleBabyMemoryAgentStatus {
   agentId: string;
   status: {
     backend: string;

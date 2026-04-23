@@ -9,7 +9,7 @@ const SLOT_ROW_HEIGHT = 66;
 const TABLE_CELL_GAP = 4;
 const EMPTY_SLOT_MIN_HEIGHT = SLOT_ROW_HEIGHT;
 
-type OwnerFilter = 'all' | 'me' | 'partner';
+type OwnerFilter = 'me' | 'partner';
 
 const DEFAULT_ME_SLOTS = [
   { key: 1, label: '第1节', time: '08:10-08:55' },
@@ -264,7 +264,7 @@ export default function Schedule() {
   const [semester, setSemester] = useState<SemesterConfig | null>(null);
   const [allCourses, setAllCourses] = useState<ScheduleCourse[]>([]);
   const [timeSlotConfigs, setTimeSlotConfigs] = useState<TimeSlotConfig[]>([]);
-  const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>('all');
+  const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>('me');
 
   const fetchSemester = async () => {
     try {
@@ -418,7 +418,6 @@ export default function Schedule() {
                 value={ownerFilter}
                 onChange={setOwnerFilter}
                 options={[
-                  { value: 'all', label: '全部' },
                   { value: 'me', label: '他' },
                   { value: 'partner', label: '她' },
                 ]}
@@ -439,10 +438,7 @@ export default function Schedule() {
       ) : (
         <Card style={{ border: '1px solid #303030', background: 'linear-gradient(180deg, rgba(31,31,31,0.98), rgba(20,20,20,0.96))' }}>
           <div style={{ overflowX: 'auto' }}>
-            <div style={{ display: 'flex', gap: 16, minWidth: ownerFilter === 'all' ? 1400 : 700 }}>
-              {(ownerFilter === 'all' || ownerFilter === 'me') && renderSchedulePanel('me')}
-              {(ownerFilter === 'all' || ownerFilter === 'partner') && renderSchedulePanel('partner')}
-            </div>
+            {renderSchedulePanel(ownerFilter)}
           </div>
         </Card>
       )}

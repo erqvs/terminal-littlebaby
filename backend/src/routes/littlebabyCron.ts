@@ -1,10 +1,10 @@
 import { Router, Request, Response } from 'express';
-import { OPENCLAW_CRON_BRIDGE_TOKEN } from '../utils/security';
+import { LITTLEBABY_CRON_BRIDGE_TOKEN } from '../utils/security';
 
 const router = Router();
 
-const BRIDGE_URL = process.env.OPENCLAW_CRON_BRIDGE_URL || 'http://INTERNAL_IP:3011';
-const BRIDGE_TOKEN = OPENCLAW_CRON_BRIDGE_TOKEN || '';
+const BRIDGE_URL = process.env.LITTLEBABY_CRON_BRIDGE_URL || 'http://INTERNAL_IP:3011';
+const BRIDGE_TOKEN = LITTLEBABY_CRON_BRIDGE_TOKEN || '';
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
@@ -169,8 +169,8 @@ router.get('/status', async (_req: Request, res: Response) => {
     const { response, payload } = await bridgeFetch('/cron/status');
     res.status(response.status).json(payload);
   } catch (error) {
-    console.error('Error fetching OpenClaw cron status:', error);
-    res.status(500).json({ error: 'Failed to fetch OpenClaw cron status' });
+    console.error('Error fetching LittleBaby cron status:', error);
+    res.status(500).json({ error: 'Failed to fetch LittleBaby cron status' });
   }
 });
 
@@ -181,8 +181,8 @@ router.get('/jobs', async (req: Request, res: Response) => {
     const { response, payload } = await bridgeFetch(`/cron/jobs?all=${all}`);
     res.status(response.status).json(payload);
   } catch (error) {
-    console.error('Error fetching OpenClaw cron jobs:', error);
-    res.status(500).json({ error: 'Failed to fetch OpenClaw cron jobs' });
+    console.error('Error fetching LittleBaby cron jobs:', error);
+    res.status(500).json({ error: 'Failed to fetch LittleBaby cron jobs' });
   }
 });
 
@@ -194,8 +194,8 @@ router.get('/jobs/:id/runs', async (req: Request, res: Response) => {
     const { response, payload } = await bridgeFetch(`/cron/jobs/${id}/runs?limit=${encodeURIComponent(limit)}`);
     res.status(response.status).json(payload);
   } catch (error) {
-    console.error('Error fetching OpenClaw cron runs:', error);
-    res.status(500).json({ error: 'Failed to fetch OpenClaw cron runs' });
+    console.error('Error fetching LittleBaby cron runs:', error);
+    res.status(500).json({ error: 'Failed to fetch LittleBaby cron runs' });
   }
 });
 
@@ -208,8 +208,8 @@ router.post('/jobs', async (req: Request, res: Response) => {
     });
     res.status(response.status).json(payload);
   } catch (error) {
-    console.error('Error creating OpenClaw cron job:', error);
-    res.status(500).json({ error: 'Failed to create OpenClaw cron job' });
+    console.error('Error creating LittleBaby cron job:', error);
+    res.status(500).json({ error: 'Failed to create LittleBaby cron job' });
   }
 });
 
@@ -224,8 +224,8 @@ router.patch('/jobs/:id', async (req: Request, res: Response) => {
     });
     res.status(response.status).json(payload);
   } catch (error) {
-    console.error('Error updating OpenClaw cron job:', error);
-    res.status(500).json({ error: 'Failed to update OpenClaw cron job' });
+    console.error('Error updating LittleBaby cron job:', error);
+    res.status(500).json({ error: 'Failed to update LittleBaby cron job' });
   }
 });
 
@@ -239,8 +239,8 @@ router.post('/jobs/:id/enable', async (req: Request, res: Response) => {
     });
     res.status(response.status).json(payload);
   } catch (error) {
-    console.error('Error enabling OpenClaw cron job:', error);
-    res.status(500).json({ error: 'Failed to enable OpenClaw cron job' });
+    console.error('Error enabling LittleBaby cron job:', error);
+    res.status(500).json({ error: 'Failed to enable LittleBaby cron job' });
   }
 });
 
@@ -254,8 +254,8 @@ router.post('/jobs/:id/disable', async (req: Request, res: Response) => {
     });
     res.status(response.status).json(payload);
   } catch (error) {
-    console.error('Error disabling OpenClaw cron job:', error);
-    res.status(500).json({ error: 'Failed to disable OpenClaw cron job' });
+    console.error('Error disabling LittleBaby cron job:', error);
+    res.status(500).json({ error: 'Failed to disable LittleBaby cron job' });
   }
 });
 
@@ -269,8 +269,8 @@ router.post('/jobs/:id/run', async (req: Request, res: Response) => {
     });
     res.status(response.status).json(payload);
   } catch (error) {
-    console.error('Error running OpenClaw cron job:', error);
-    res.status(500).json({ error: 'Failed to run OpenClaw cron job' });
+    console.error('Error running LittleBaby cron job:', error);
+    res.status(500).json({ error: 'Failed to run LittleBaby cron job' });
   }
 });
 
@@ -283,8 +283,8 @@ router.delete('/jobs/:id', async (req: Request, res: Response) => {
     });
     res.status(response.status).json(payload);
   } catch (error) {
-    console.error('Error deleting OpenClaw cron job:', error);
-    res.status(500).json({ error: 'Failed to delete OpenClaw cron job' });
+    console.error('Error deleting LittleBaby cron job:', error);
+    res.status(500).json({ error: 'Failed to delete LittleBaby cron job' });
   }
 });
 

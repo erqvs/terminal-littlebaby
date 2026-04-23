@@ -5,11 +5,11 @@ import { URL } from 'node:url';
 
 const execFileAsync = promisify(execFile);
 
-const HOST = process.env.OPENCLAW_CRON_BRIDGE_HOST || 'INTERNAL_IP';
-const PORT = Number(process.env.OPENCLAW_CRON_BRIDGE_PORT || 3011);
-const TOKEN = process.env.OPENCLAW_CRON_BRIDGE_TOKEN || '';
-const TARGET = process.env.OPENCLAW_CRON_TARGET || 'custom';
-const OPENCLAW_BIN = process.env.OPENCLAW_BIN || 'openclaw';
+const HOST = process.env.LITTLEBABY_CRON_BRIDGE_HOST || 'INTERNAL_IP';
+const PORT = Number(process.env.LITTLEBABY_CRON_BRIDGE_PORT || 3011);
+const TOKEN = process.env.LITTLEBABY_CRON_BRIDGE_TOKEN || '';
+const TARGET = process.env.LITTLEBABY_CRON_TARGET || 'custom';
+const LITTLEBABY_BIN = process.env.LITTLEBABY_BIN || 'littlebaby';
 
 function sendJson(res, status, payload) {
   res.writeHead(status, {
@@ -69,7 +69,7 @@ function extractJson(stdout) {
 async function runCronCommand(args) {
   try {
     const { stdout } = await execFileAsync(
-      OPENCLAW_BIN,
+      LITTLEBABY_BIN,
       ['--log-level', 'silent', 'cron', ...args],
       {
         env: process.env,
@@ -83,7 +83,7 @@ async function runCronCommand(args) {
     const stdout = error.stdout?.toString?.().trim?.() || '';
     return {
       ok: false,
-      error: stderr || stdout || error.message || 'OpenClaw cron command failed',
+      error: stderr || stdout || error.message || 'LittleBaby cron command failed',
       stdout,
       stderr,
     };
@@ -93,7 +93,7 @@ async function runCronCommand(args) {
 async function runCronTextCommand(args) {
   try {
     const { stdout } = await execFileAsync(
-      OPENCLAW_BIN,
+      LITTLEBABY_BIN,
       ['--log-level', 'silent', 'cron', ...args],
       {
         env: process.env,
@@ -110,7 +110,7 @@ async function runCronTextCommand(args) {
     const stdout = error.stdout?.toString?.().trim?.() || '';
     return {
       ok: false,
-      error: stderr || stdout || error.message || 'OpenClaw cron command failed',
+      error: stderr || stdout || error.message || 'LittleBaby cron command failed',
       stdout,
       stderr,
     };
@@ -351,5 +351,5 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`OpenClaw cron bridge listening on http://${HOST}:${PORT} (${TARGET})`);
+  console.log(`LittleBaby cron bridge listening on http://${HOST}:${PORT} (${TARGET})`);
 });

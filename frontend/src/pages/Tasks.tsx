@@ -13,7 +13,7 @@ type PersonalTask = {
   completedAt: string | null;
 };
 
-const TASK_STORAGE_KEY = 'terminal-claw.personal.task-list.v1';
+const TASK_STORAGE_KEY = 'terminal-littlebaby.personal.task-list.v1';
 
 function readStoredTasks(): PersonalTask[] {
   if (typeof window === 'undefined') {

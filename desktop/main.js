@@ -2,7 +2,7 @@ const path = require('node:path');
 const { app, BrowserWindow, shell } = require('electron');
 const { updateElectronApp, UpdateSourceType } = require('update-electron-app');
 
-const APP_URL = process.env.TERMINAL_CLAW_APP_URL || 'https://terminal-claw.example.com:23333';
+const APP_URL = process.env.TERMINAL_LITTLEBABY_APP_URL || 'https://terminal-littlebaby.example.com:23333';
 const APP_ORIGIN = new URL(APP_URL).origin;
 
 function setupAutoUpdates() {
@@ -13,7 +13,7 @@ function setupAutoUpdates() {
   updateElectronApp({
     updateSource: {
       type: UpdateSourceType.ElectronPublicUpdateService,
-      repo: 'your-org/terminal-claw'
+      repo: 'your-org/terminal-littlebaby'
     },
     updateInterval: '10 minutes',
     notifyUser: true,
@@ -30,7 +30,7 @@ function createMainWindow() {
     show: false,
     autoHideMenuBar: true,
     backgroundColor: '#141414',
-    title: 'terminal-claw',
+    title: 'terminal-littlebaby',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
