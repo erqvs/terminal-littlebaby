@@ -3,7 +3,7 @@ import { LITTLEBABY_CRON_BRIDGE_TOKEN } from '../utils/security';
 
 const router = Router();
 
-const BRIDGE_URL = process.env.LITTLEBABY_CRON_BRIDGE_URL || 'http://INTERNAL_IP:3011';
+const BRIDGE_URL = process.env.LITTLEBABY_CRON_BRIDGE_URL || 'http://localhost:3011';
 const BRIDGE_TOKEN = LITTLEBABY_CRON_BRIDGE_TOKEN || '';
 
 function isNonEmptyString(value: unknown): value is string {

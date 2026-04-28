@@ -56,7 +56,7 @@ async function getNewApiDb() {
     host: process.env.DB_HOST_NEWAPI || 'mysql',
     port: 3306,
     user: 'root',
-    password: process.env.DB_PASSWORD_NEWAPI || 'REDACTED_PASSWORD',
+    password: process.env.DB_PASSWORD_NEWAPI || '',
     database: 'new_api',
   });
 }

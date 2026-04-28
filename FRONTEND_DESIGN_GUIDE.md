@@ -4,7 +4,7 @@
 
 适用范围：
 
-- 项目：`/path/to/project/frontend`
+- 项目：`frontend`
 - 技术栈：React 19 + TypeScript + Vite + Ant Design 6
 - 设计基线：Ant Design 暗色主题之上，叠加少量全局覆写和大量页面级内联样式
 

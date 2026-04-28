@@ -5,7 +5,7 @@ import { URL } from 'node:url';
 
 const execFileAsync = promisify(execFile);
 
-const HOST = process.env.LITTLEBABY_CRON_BRIDGE_HOST || 'INTERNAL_IP';
+const HOST = process.env.LITTLEBABY_CRON_BRIDGE_HOST || '127.0.0.1';
 const PORT = Number(process.env.LITTLEBABY_CRON_BRIDGE_PORT || 3011);
 const TOKEN = process.env.LITTLEBABY_CRON_BRIDGE_TOKEN || '';
 const TARGET = process.env.LITTLEBABY_CRON_TARGET || 'custom';

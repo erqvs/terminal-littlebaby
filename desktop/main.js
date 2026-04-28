@@ -2,7 +2,7 @@ const path = require('node:path');
 const { app, BrowserWindow, shell } = require('electron');
 const { updateElectronApp, UpdateSourceType } = require('update-electron-app');
 
-const APP_URL = process.env.TERMINAL_LITTLEBABY_APP_URL || 'https://terminal-littlebaby.example.com:23333';
+const APP_URL = process.env.TERMINAL_LITTLEBABY_APP_URL || 'http://localhost:3000';
 const APP_ORIGIN = new URL(APP_URL).origin;
 
 function setupAutoUpdates() {

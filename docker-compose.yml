@@ -18,7 +18,7 @@ services:
       - NODE_ENV=production
       - TZ=Asia/Shanghai
     volumes:
-      - /home/user/.littlebaby:/root/.littlebaby:ro
+      - ${LITTLEBABY_STATE_DIR:-./state}:/root/.littlebaby:ro
     networks:
       - proxy-network
     depends_on: []

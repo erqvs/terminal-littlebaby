@@ -26,12 +26,10 @@ app.disable('x-powered-by');
 app.set('trust proxy', 'loopback, linklocal, uniquelocal');
 
 // 允许的域名列表
-const allowedOrigins = [
-  'https://terminal-littlebaby.example.com:23333',
-  'https://terminal-littlebaby.example.com',
-  'http://localhost:5173',  // 本地开发
-  'http://localhost:3000',
-];
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 // CORS 配置
 app.use(cors({
